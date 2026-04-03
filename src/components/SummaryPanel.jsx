@@ -25,7 +25,7 @@ function SummaryRow({ label, value, prominent, negative }) {
 export default function SummaryPanel({ inputs, results }) {
   const r = results;
 
-  const employerCosts = r.employerNIDirectorNet + r.employerNI5k + r.employerPension5k;
+  const employerCosts = r.employerNIDirectorNet + r.employerNI5kNet + r.employerPension5k;
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-5">
