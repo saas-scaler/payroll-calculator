@@ -7,7 +7,7 @@ import { RATES } from '../constants/rates';
  * @param {number} inputs.otherCosts
  * @param {number} inputs.directorSalary
  * @param {number} inputs.dividends
- * @param {boolean} inputs.eaToggle - Include £5,001 Employee
+ * @param {boolean} inputs.eaToggle - Include Employee
  * @param {string} inputs.pensionMethod - 'none' | 'salary_sacrifice' | 'relief_at_source'
  * @param {number} inputs.directorPensionRate - Pension rate as percentage (e.g. 5 for 5%)
  * @returns {Object} Full calculation results
@@ -38,7 +38,7 @@ export function calculate(inputs) {
   const employerPension5k = eaToggle
     ? Math.round(employeeSalary * R.employerPensionMatch * 100) / 100
     : 0;
-  const employerNI5k = eaToggle
+  const employerNI5kGross = eaToggle
     ? Math.max(0, (employeeSalary - R.secondaryThreshold) * R.employerNIRate)
     : 0;
 
@@ -47,11 +47,19 @@ export function calculate(inputs) {
     (pensionableSalary - R.secondaryThreshold) * R.employerNIRate
   );
 
+  // Employment Allowance offsets combined employer NI (director + employee)
+  const totalEmployerNIGross = employerNIDirectorGross + employerNI5kGross;
+
   const employmentAllowanceUsed = eaToggle
-    ? Math.min(R.employmentAllowance, employerNIDirectorGross)
+    ? Math.min(R.employmentAllowance, totalEmployerNIGross)
     : 0;
 
-  const employerNIDirectorNet = Math.max(0, employerNIDirectorGross - employmentAllowanceUsed);
+  // Apply EA to employee NI first, remainder offsets director NI
+  const eaAppliedToEmployee = Math.min(employmentAllowanceUsed, employerNI5kGross);
+  const eaAppliedToDirector = employmentAllowanceUsed - eaAppliedToEmployee;
+
+  const employerNI5kNet = employerNI5kGross - eaAppliedToEmployee;
+  const employerNIDirectorNet = Math.max(0, employerNIDirectorGross - eaAppliedToDirector);
 
   const taxableCompanyProfit =
     revenue
@@ -60,7 +68,7 @@ export function calculate(inputs) {
     - directorPensionSacrificeAmount
     - directorSalary
     - employerPension5k
-    - employerNI5k
+    - employerNI5kNet
     - employerNIDirectorNet;
 
   // Corporation Tax
@@ -150,7 +158,7 @@ export function calculate(inputs) {
     + incomeTax
     + employeeNI
     + employerNIDirectorNet
-    + employerNI5k
+    + employerNI5kNet
     + employerPension5k
     + dividendTax;
 
@@ -203,7 +211,8 @@ export function calculate(inputs) {
     pensionableSalary,
     employee5kSalary,
     employerPension5k,
-    employerNI5k,
+    employerNI5kGross,
+    employerNI5kNet,
     employerNIDirectorGross,
     employmentAllowanceUsed,
     employerNIDirectorNet,
