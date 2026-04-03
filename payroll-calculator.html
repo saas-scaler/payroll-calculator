@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UK Director Payroll &amp; Tax Calculator — FY 2026/27</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.2/babel.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet" />
+<style>
+  body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: #f3f4f6; }
+  .tooltip-wrap { position: relative; display: inline-block; margin-left: 4px; }
+  .tooltip-btn { width: 16px; height: 16px; border-radius: 50%; background: #e2e8f0; color: #64748b; font-size: 10px; font-weight: bold; border: none; cursor: help; display: inline-flex; align-items: center; justify-content: center; }
+  .tooltip-btn:hover { background: #cbd5e1; }
+  .tooltip-box { position: absolute; z-index: 50; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 8px; width: 220px; padding: 8px; background: #1e293b; color: #fff; font-size: 12px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,.2); pointer-events: none; }
+  .tooltip-arrow { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 4px solid transparent; border-top-color: #1e293b; }
+  .neg { color: #dc2626; }
+  .refund { color: #16a34a; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 8px; font-size: 14px; }
+  .row-highlight { background: #f8fafc; font-weight: 600; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
+  .row-prominent { background: #eff6ff; font-weight: 700; font-size: 16px; border-top: 2px solid #2563eb; margin-top: 4px; }
+  .mono { font-family: ui-monospace, Consolas, monospace; text-align: right; }
+  .section-title { font-size: 16px; font-weight: 600; color: #1e293b; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid #2563eb; }
+  .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.08); border: 1px solid #e2e8f0; padding: 20px; }
+  .toggle-track { position: relative; display: inline-flex; height: 24px; width: 44px; align-items: center; border-radius: 12px; cursor: pointer; border: none; transition: background .2s; }
+  .toggle-track.on { background: #2563eb; }
+  .toggle-track.off { background: #cbd5e1; }
+  .toggle-knob { display: inline-block; height: 16px; width: 16px; border-radius: 50%; background: #fff; transition: transform .2s; }
+  .toggle-knob.on { transform: translateX(24px); }
+  .toggle-knob.off { transform: translateX(4px); }
+  input[type="text"].input-field { width: 100%; padding: 8px 12px 8px 28px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; box-sizing: border-box; }
+  input[type="text"].input-field:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,.3); }
+  .warning-box { display: flex; gap: 8px; padding: 12px; border-radius: 6px; border: 1px solid; font-size: 14px; margin-bottom: 8px; }
+  .warning-amber { background: #fffbeb; border-color: #fde68a; }
+  .warning-blue { background: #eff6ff; border-color: #bfdbfe; }
+  .warning-green { background: #f0fdf4; border-color: #bbf7d0; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { padding: 6px; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  thead tr { border-bottom: 1px solid #e2e8f0; }
+  tbody tr { border-bottom: 1px solid #f1f5f9; }
+  .best-col { background: #f0fdf4; }
+  .custom-col { border-left: 2px solid #bfdbfe; border-right: 2px solid #bfdbfe; }
+  @media (min-width: 1024px) {
+    .main-grid { display: grid; grid-template-columns: 7fr 5fr; gap: 24px; }
+  }
+  .rates-table td { padding: 6px 4px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo, useCallback } = React;
+
+// ── RATES ──
+const RATES = {
+  secondaryThreshold: 5000, employerNIRate: 0.15, employmentAllowance: 10500,
+  employerPensionMatch: 0.03, directorPensionSacrifice: 0.05,
+  ctSmallProfitsLimit: 50000, ctSmallProfitsRate: 0.19, ctMainRateLimit: 250000,
+  ctMainRate: 0.25, ctMarginalReliefDenominator: 200000,
+  personalAllowance: 12570, paTaperThreshold: 100000, basicRateBandWidth: 37700,
+  basicRate: 0.20, higherRateBandUpperAbovePA: 112570, higherRate: 0.40, additionalRate: 0.45,
+  employeeNIPrimaryThreshold: 12570, employeeNIMainRate: 0.08, upperEarningsLimit: 50270, employeeNIUpperRate: 0.02,
+  dividendAllowance: 500, dividendBasicRate: 0.1075, dividendHigherRate: 0.3575,
+  dividendAdditionalRate: 0.3935, additionalRateThreshold: 125140,
+};
+
+// ── FORMAT ──
+function fmtCur(v) {
+  if (v == null || isNaN(v)) return '£0';
+  const abs = Math.abs(Math.round(v));
+  const s = '£' + abs.toLocaleString('en-GB');
+  return v < -0.5 ? '(' + s + ')' : s;
+}
+function fmtPct(v) { return v == null || isNaN(v) ? '0.0%' : (v * 100).toFixed(1) + '%'; }
+function parseNum(s) {
+  if (typeof s === 'number') return s;
+  if (!s) return 0;
+  const n = parseFloat(s.replace(/[,£\s]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+function fmtNumInput(v) {
+  if (v == null || v === '' || isNaN(v)) return '';
+  return Math.round(v).toLocaleString('en-GB');
+}
+
+// ── CALCULATE ──
+function calculate(inputs) {
+  const { revenue, otherCosts, directorSalary, dividends, eaToggle, pensionToggle } = inputs;
+  const R = RATES;
+
+  const directorPensionSacrificeAmount = pensionToggle ? Math.round(directorSalary * R.directorPensionSacrifice * 100) / 100 : 0;
+  const pensionableSalary = directorSalary - directorPensionSacrificeAmount;
+  const employee5kSalary = eaToggle ? 5001 : 0;
+  const employerPension5k = eaToggle ? Math.round(5001 * R.employerPensionMatch * 100) / 100 : 0;
+  const employerNI5k = eaToggle ? Math.max(0, (5001 - R.secondaryThreshold) * R.employerNIRate) : 0;
+  const employerNIDirectorGross = Math.max(0, (pensionableSalary - R.secondaryThreshold) * R.employerNIRate);
+  const employmentAllowanceUsed = eaToggle ? Math.min(R.employmentAllowance, employerNIDirectorGross) : 0;
+  const employerNIDirectorNet = Math.max(0, employerNIDirectorGross - employmentAllowanceUsed);
+
+  const taxableCompanyProfit = revenue - otherCosts - employee5kSalary - directorPensionSacrificeAmount - directorSalary - employerPension5k - employerNI5k - employerNIDirectorNet;
+
+  let corporationTax;
+  if (taxableCompanyProfit >= 0) {
+    if (taxableCompanyProfit <= R.ctSmallProfitsLimit) {
+      corporationTax = taxableCompanyProfit * R.ctSmallProfitsRate;
+    } else if (taxableCompanyProfit >= R.ctMainRateLimit) {
+      corporationTax = taxableCompanyProfit * R.ctMainRate;
+    } else {
+      corporationTax = taxableCompanyProfit * R.ctMainRate - (R.ctMainRateLimit - taxableCompanyProfit) * (taxableCompanyProfit / R.ctMarginalReliefDenominator) * (R.ctMainRate - R.ctSmallProfitsRate);
+    }
+  } else {
+    corporationTax = taxableCompanyProfit * R.ctSmallProfitsRate;
+  }
+  const postTaxProfit = taxableCompanyProfit - corporationTax;
+
+  const taxableSalary = directorSalary - directorPensionSacrificeAmount;
+  const totalPersonalIncome = taxableSalary + dividends;
+  const adjustedPA = Math.max(0, R.personalAllowance - Math.max(0, (totalPersonalIncome - R.paTaperThreshold) / 2));
+
+  const salaryAbovePA = Math.max(0, taxableSalary - adjustedPA);
+  const incomeTax = Math.min(salaryAbovePA, R.basicRateBandWidth) * R.basicRate
+    + Math.max(0, Math.min(salaryAbovePA - R.basicRateBandWidth, R.higherRateBandUpperAbovePA - R.basicRateBandWidth)) * R.higherRate
+    + Math.max(0, salaryAbovePA - R.higherRateBandUpperAbovePA) * R.additionalRate;
+
+  const employeeNI = Math.max(0, Math.min(taxableSalary, R.upperEarningsLimit) - R.employeeNIPrimaryThreshold) * R.employeeNIMainRate
+    + Math.max(0, taxableSalary - R.upperEarningsLimit) * R.employeeNIUpperRate;
+
+  const basicRateBandRemaining = Math.max(0, adjustedPA + R.basicRateBandWidth - taxableSalary);
+  const higherRateBandRemaining = Math.max(0, R.additionalRateThreshold - taxableSalary - basicRateBandRemaining);
+  const taxableDividends = Math.max(0, dividends - R.dividendAllowance);
+  const dividendBasicTaxed = Math.min(taxableDividends, basicRateBandRemaining);
+  const dividendHigherTaxed = Math.max(0, Math.min(taxableDividends - basicRateBandRemaining, higherRateBandRemaining));
+  const dividendAdditTaxed = Math.max(0, taxableDividends - basicRateBandRemaining - higherRateBandRemaining);
+  const dividendTax = dividendBasicTaxed * R.dividendBasicRate + dividendHigherTaxed * R.dividendHigherRate + dividendAdditTaxed * R.dividendAdditionalRate;
+
+  const netTakeHome = directorSalary + dividends - incomeTax - employeeNI - dividendTax;
+
+  const totalTax = corporationTax + incomeTax + employeeNI + employerNIDirectorNet + employerNI5k + employerPension5k + dividendTax;
+  const effectiveTaxRate = revenue > 0 ? totalTax / revenue : 0;
+  const takeHomeAsPercentOfRevenue = revenue > 0 ? netTakeHome / revenue : 0;
+
+  const warnings = [];
+  if (dividends > postTaxProfit) warnings.push({ type: 'warning', message: 'Dividends drawn (\u00a3' + Math.round(dividends).toLocaleString() + ') exceed post-tax profit available (\u00a3' + Math.round(postTaxProfit).toLocaleString() + '). You may need retained profits from previous years.' });
+  if (totalPersonalIncome > 100000 && totalPersonalIncome < 125140) warnings.push({ type: 'warning', message: 'Personal Allowance tapered to \u00a3' + Math.round(adjustedPA).toLocaleString() + ' (income exceeds \u00a3100,000). Effective marginal rate is 60% between \u00a3100k\u2013\u00a3125,140.' });
+  if (totalPersonalIncome >= 125140) warnings.push({ type: 'warning', message: 'Personal Allowance fully lost (income \u2265 \u00a3125,140). Note: 60% effective marginal rate applies between \u00a3100k\u2013\u00a3125,140.' });
+  if (taxableCompanyProfit < 0) warnings.push({ type: 'info', message: 'Company is in a loss position. CT refund assumes historic profits are available for carry-back \u2014 verify with your accountant.' });
+  if (!eaToggle) warnings.push({ type: 'tip', message: 'Employing one person on \u00a35,001 could unlock \u00a310,500 Employment Allowance, potentially reducing your total tax bill.' });
+
+  return { directorPensionSacrificeAmount, pensionableSalary, employee5kSalary, employerPension5k, employerNI5k, employerNIDirectorGross, employmentAllowanceUsed, employerNIDirectorNet, taxableCompanyProfit, corporationTax, postTaxProfit, taxableSalary, totalPersonalIncome, adjustedPA, incomeTax, employeeNI, dividendTax, netTakeHome, totalTax, effectiveTaxRate, takeHomeAsPercentOfRevenue, warnings };
+}
+
+// ── COMPONENTS ──
+function Tooltip({ text }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="tooltip-wrap">
+      <button className="tooltip-btn" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)} onClick={() => setShow(!show)}>i</button>
+      {show && <div className="tooltip-box">{text}<div className="tooltip-arrow"></div></div>}
+    </span>
+  );
+}
+
+function Row({ label, value, highlight, prominent, negative, tooltip }) {
+  const isNeg = value < -0.5;
+  const cls = prominent ? 'row row-prominent' : highlight ? 'row row-highlight' : 'row';
+  const valCls = 'mono' + (negative && isNeg ? ' refund' : isNeg ? ' neg' : '');
+  return (
+    <div className={cls}>
+      <span style={{color:'#334155'}}>{label}{tooltip && <Tooltip text={tooltip} />}</span>
+      <span className={valCls}>{typeof value === 'string' ? value : fmtCur(value)}</span>
+    </div>
+  );
+}
+
+function CurrencyInput({ label, value, onChange, id }) {
+  const [displayVal, setDisplayVal] = useState(fmtNumInput(value));
+  const handleChange = (e) => { setDisplayVal(e.target.value); onChange(parseNum(e.target.value)); };
+  const handleFocus = () => { setDisplayVal(value === 0 ? '' : String(value)); };
+  const handleBlur = () => { setDisplayVal(fmtNumInput(value)); };
+  return (
+    <div style={{marginBottom: 12}}>
+      <label htmlFor={id} style={{display:'block', fontSize:14, fontWeight:500, color:'#334155', marginBottom:4}}>{label}</label>
+      <div style={{position:'relative'}}>
+        <span style={{position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94a3b8', fontSize:14}}>&pound;</span>
+        <input id={id} type="text" inputMode="numeric" className="input-field" value={displayVal} onChange={handleChange} onFocus={handleFocus} onBlur={handleBlur} />
+      </div>
+    </div>
+  );
+}
+
+function Toggle({ label, checked, onChange, id, desc }) {
+  return (
+    <div style={{marginBottom: 12}}>
+      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+        <label htmlFor={id} style={{fontSize:14, fontWeight:500, color:'#334155'}}>{label}</label>
+        <button id={id} type="button" className={'toggle-track ' + (checked ? 'on' : 'off')} onClick={() => onChange(!checked)}>
+          <span className={'toggle-knob ' + (checked ? 'on' : 'off')} />
+        </button>
+      </div>
+      {desc && <p style={{fontSize:12, color:'#64748b', marginTop:2}}>{desc}</p>}
+    </div>
+  );
+}
+
+function Warnings({ warnings }) {
+  if (!warnings || !warnings.length) return null;
+  const colors = { warning: 'warning-amber', info: 'warning-blue', tip: 'warning-green' };
+  const icons = {
+    warning: '\u26a0\ufe0f',
+    info: '\u2139\ufe0f',
+    tip: '\ud83d\udca1',
+  };
+  return (
+    <div style={{marginBottom: 16}}>
+      {warnings.map((w, i) => (
+        <div key={i} className={'warning-box ' + (colors[w.type] || colors.warning)}>
+          <span>{icons[w.type] || icons.warning}</span>
+          <span style={{color:'#334155'}}>{w.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CompanySection({ inputs, results: r }) {
+  return (
+    <div style={{marginBottom: 24}}>
+      <div className="section-title">Company Tax Calculation</div>
+      <Row label="Revenue" value={inputs.revenue} />
+      <Row label="Less: Other Business Costs" value={-inputs.otherCosts} />
+      {r.employee5kSalary > 0 && <Row label="Less: \u00a35,001 Employee Salary" value={-r.employee5kSalary} />}
+      {r.directorPensionSacrificeAmount > 0 && <Row label="Less: Director Pension Sacrifice" value={-r.directorPensionSacrificeAmount} tooltip="Salary sacrifice reduces both taxable salary and employer NI base. The sacrificed amount goes directly into the director's pension." />}
+      <Row label="Less: Director Salary" value={-inputs.directorSalary} />
+      {r.employerPension5k > 0 && <Row label="Less: Employer Pension on Employee" value={-r.employerPension5k} />}
+      {r.employerNI5k > 0 && <Row label="Less: Employer NI on Employee" value={-r.employerNI5k} />}
+      <Row label="Employer NI on Director (gross)" value={-r.employerNIDirectorGross} />
+      {r.employmentAllowanceUsed > 0 && <Row label="Add: Employment Allowance" value={r.employmentAllowanceUsed} tooltip="Employment Allowance of up to \u00a310,500 offsets employer NI. Available when at least one employee is on payroll." />}
+      <Row label="Less: Employer NI on Director (net)" value={-r.employerNIDirectorNet} />
+      <Row label="Taxable Company Profit" value={r.taxableCompanyProfit} highlight />
+      <Row label="Less: Corporation Tax" value={-r.corporationTax} negative tooltip={r.taxableCompanyProfit < 0 ? 'Loss carry-back: 19% refund on losses, assuming historic profits are available.' : r.taxableCompanyProfit > 50000 && r.taxableCompanyProfit < 250000 ? 'Marginal relief applies between \u00a350k\u2013\u00a3250k profits, giving an effective rate between 19%\u201325%.' : undefined} />
+      <Row label="Post-Tax Profit Available for Dividends" value={r.postTaxProfit} highlight />
+    </div>
+  );
+}
+
+function PersonalSection({ inputs, results: r }) {
+  return (
+    <div style={{marginBottom: 24}}>
+      <div className="section-title">Personal Tax Calculation</div>
+      <Row label="Director Salary (pensionable)" value={r.taxableSalary} />
+      <Row label="Dividends Drawn" value={inputs.dividends} />
+      <Row label="Total Personal Income" value={r.totalPersonalIncome} />
+      <Row label="Adjusted Personal Allowance" value={r.adjustedPA} tooltip="Personal Allowance of \u00a312,570 tapers by \u00a31 for every \u00a32 of income above \u00a3100,000. Dividends count towards the taper threshold even though \u00a3500 is tax-free." />
+      <Row label="Income Tax on Salary" value={-r.incomeTax} />
+      <Row label="Employee NI" value={-r.employeeNI} />
+      <Row label="Dividend Tax" value={-r.dividendTax} tooltip="First \u00a3500 of dividends is tax-free. Remaining dividends are taxed at 10.75% (basic), 35.75% (higher) or 39.35% (additional) depending on which band they fall in." />
+      {inputs.pensionToggle && <Row label="Director Pension (company contribution)" value={r.directorPensionSacrificeAmount} tooltip="This amount is paid by the company into the director's pension via salary sacrifice. It's not part of take-home pay but is a tax-efficient benefit." />}
+      <Row label="Net Personal Take-Home" value={r.netTakeHome} highlight />
+    </div>
+  );
+}
+
+function SummaryPanel({ inputs, results: r }) {
+  const employerCosts = r.employerNIDirectorNet + r.employerNI5k + r.employerPension5k;
+
+  const scenarioSalaries = useMemo(() => {
+    const s = [0, 5000, 9100, 12570];
+    if (!s.includes(inputs.directorSalary)) s.push(inputs.directorSalary);
+    return s;
+  }, [inputs.directorSalary]);
+
+  const scenarios = useMemo(() => scenarioSalaries.map(salary => {
+    const res = calculate({ ...inputs, directorSalary: salary });
+    return { salary, isCustom: salary === inputs.directorSalary, ...res };
+  }), [inputs, scenarioSalaries]);
+
+  const minTax = Math.min(...scenarios.map(s => s.totalTax));
+
+  const rows = [
+    { label: 'Director Salary', fmt: s => fmtCur(s.salary) },
+    { label: 'Taxable Profit', key: 'taxableCompanyProfit' },
+    { label: 'Corp Tax', key: 'corporationTax' },
+    { label: 'Post-Tax Profit', key: 'postTaxProfit' },
+    { label: 'Personal Allowance', key: 'adjustedPA' },
+    { label: 'Income Tax', key: 'incomeTax' },
+    { label: 'Employee NI', key: 'employeeNI' },
+    { label: 'Dividend Tax', key: 'dividendTax' },
+    { label: 'Net Take-Home', key: 'netTakeHome', bold: true },
+    { label: 'Total Tax', key: 'totalTax', bold: true },
+    { label: 'Eff. Rate', fmt: s => fmtPct(s.effectiveTaxRate) },
+  ];
+
+  return (
+    <div className="card">
+      <div className="section-title">Tax Summary</div>
+      <Row label="Corporation Tax" value={r.corporationTax} />
+      <Row label="Income Tax" value={r.incomeTax} />
+      <Row label="Employee NI" value={r.employeeNI} />
+      <Row label="Employer NI + Pension Costs" value={employerCosts} />
+      <Row label="Dividend Tax" value={r.dividendTax} />
+      <Row label="TOTAL TAX" value={r.totalTax} prominent />
+      <Row label="Effective Tax Rate" value={fmtPct(r.effectiveTaxRate)} />
+      <Row label="Take-Home as % of Revenue" value={fmtPct(r.takeHomeAsPercentOfRevenue)} />
+
+      <div style={{marginTop: 24}}>
+        <div className="section-title">Scenario Comparison</div>
+        <div style={{overflowX:'auto', margin:'0 -8px'}}>
+          <table>
+            <thead>
+              <tr>
+                <th style={{textAlign:'left', color:'#475569', fontWeight:500}}>Scenario</th>
+                {scenarios.map((s, i) => (
+                  <th key={i} className={(Math.abs(s.totalTax - minTax) < 1 ? 'best-col ' : '') + (s.isCustom && ![0,5000,9100,12570].includes(s.salary) ? 'custom-col' : '')} style={{color: Math.abs(s.totalTax - minTax) < 1 ? '#166534' : '#475569', fontWeight:500}}>
+                    {s.isCustom && ![0,5000,9100,12570].includes(s.salary) ? 'Custom' : '\u00a3' + s.salary.toLocaleString()}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(row => (
+                <tr key={row.label}>
+                  <td style={{textAlign:'left', color:'#334155', fontWeight: row.bold ? 600 : 400}}>{row.label}</td>
+                  {scenarios.map((s, i) => (
+                    <td key={i} className={(Math.abs(s.totalTax - minTax) < 1 ? 'best-col ' : '') + (s.isCustom && ![0,5000,9100,12570].includes(s.salary) ? 'custom-col' : '')} style={{fontFamily:'ui-monospace, Consolas, monospace', fontWeight: row.bold ? 600 : 400}}>
+                      {row.fmt ? row.fmt(s) : fmtCur(s[row.key])}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p style={{fontSize:12, color:'#94a3b8', marginTop:8, fontStyle:'italic'}}>Green column = lowest total tax. All scenarios use your current revenue, costs, dividends and toggle settings.</p>
+      </div>
+    </div>
+  );
+}
+
+function RatesSection() {
+  const [open, setOpen] = useState(false);
+  const data = [
+    ['Employer NI', [['Secondary Threshold', '\u00a35,000', 'Per employee per year'], ['Employer NI Rate', '15%', 'On earnings above secondary threshold'], ['Employment Allowance', '\u00a310,500', 'Available if \u22651 employee on payroll']]],
+    ['Pension', [['Employer Pension Match', '3%', 'Assumption \u2014 depends on pension scheme'], ['Director Pension Sacrifice', '5%', 'Assumption \u2014 depends on pension scheme']]],
+    ['Corporation Tax', [['Small Profits Rate', '19%', 'Profits \u2264 \u00a350,000'], ['Main Rate', '25%', 'Profits \u2265 \u00a3250,000'], ['Marginal Relief', '\u00a350,001\u2013\u00a3249,999', 'Effective rate between 19%\u201325%']]],
+    ['Income Tax', [['Personal Allowance', '\u00a312,570', 'Tapers \u00a31 for every \u00a32 above \u00a3100k'], ['Basic Rate', '20%', '\u00a312,571 to \u00a350,270'], ['Higher Rate', '40%', '\u00a350,271 to \u00a3125,140'], ['Additional Rate', '45%', 'Above \u00a3125,140']]],
+    ['Employee NI', [['Primary Threshold', '\u00a312,570', 'NI starts above this amount'], ['Main Rate', '8%', '\u00a312,570 to \u00a350,270'], ['Upper Rate', '2%', 'Above \u00a350,270']]],
+    ['Dividend Tax', [['Dividend Allowance', '\u00a3500', 'Tax-free dividend income'], ['Basic Rate', '10.75%', 'Increased from 8.75% April 2026'], ['Higher Rate', '35.75%', 'Increased from 33.75% April 2026'], ['Additional Rate', '39.35%', 'Increased from 39.35% \u2014 unchanged']]],
+  ];
+  return (
+    <div className="card" style={{marginTop: 24}}>
+      <button onClick={() => setOpen(!open)} style={{width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background:'none', border:'none', cursor:'pointer', padding:0}}>
+        <span style={{fontSize:16, fontWeight:600, color:'#1e293b'}}>Rates &amp; Assumptions (FY 2026/27)</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" style={{transform: open ? 'rotate(180deg)' : 'none', transition:'transform .2s'}}><path d="M19 9l-7 7-7-7" /></svg>
+      </button>
+      {open && (
+        <div style={{borderTop:'1px solid #e2e8f0', paddingTop:12, marginTop:12}}>
+          {data.map(([cat, items]) => (
+            <div key={cat} style={{marginBottom:12}}>
+              <div style={{fontSize:14, fontWeight:600, color:'#475569', marginBottom:4}}>{cat}</div>
+              <table className="rates-table">
+                <tbody>
+                  {items.map(([label, val, note], i) => (
+                    <tr key={i} style={{borderBottom:'1px solid #f1f5f9'}}>
+                      <td style={{color:'#334155', width:'33%'}}>{label}</td>
+                      <td style={{fontFamily:'ui-monospace, Consolas, monospace', textAlign:'right', width:'16%'}}>{val}</td>
+                      <td style={{color:'#64748b', fontSize:12, paddingLeft:16}}>{note}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
+          <div style={{borderTop:'1px solid #e2e8f0', paddingTop:12, marginTop:8}}>
+            <p style={{fontSize:12, color:'#64748b', marginBottom:4}}><strong>Source:</strong> gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027</p>
+            <p style={{fontSize:12, color:'#64748b', marginBottom:4}}>Dividend tax rates increased by 2 percentage points from 6 April 2026 (Autumn Budget 2025).</p>
+            <p style={{fontSize:12, color:'#64748b'}}>Employer pension match (3%) and director sacrifice (5%) rates are assumptions — actual figures depend on the pension scheme.</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── APP ──
+function App() {
+  const [inputs, setInputs] = useState({
+    revenue: 113200, otherCosts: 3000, directorSalary: 12570, dividends: 87430, eaToggle: false, pensionToggle: false,
+  });
+  const results = useMemo(() => calculate(inputs), [inputs]);
+  const update = useCallback((field) => (value) => setInputs(prev => ({ ...prev, [field]: value })), []);
+
+  return (
+    <div style={{minHeight:'100vh', background:'#f3f4f6'}}>
+      <header style={{background:'#1e293b', color:'#fff', boxShadow:'0 4px 6px rgba(0,0,0,.1)'}}>
+        <div style={{maxWidth:1280, margin:'0 auto', padding:'16px 16px'}}>
+          <h1 style={{margin:0, fontSize:24, fontWeight:700, letterSpacing:'-0.025em'}}>UK Director Payroll &amp; Tax Calculator</h1>
+          <p style={{margin:'2px 0 0', color:'#94a3b8', fontSize:14}}>FY 2026/27 — England, Wales &amp; Northern Ireland</p>
+        </div>
+      </header>
+      <main style={{maxWidth:1280, margin:'0 auto', padding:'24px 16px'}}>
+        <Warnings warnings={results.warnings} />
+        <div className="main-grid">
+          <div>
+            <div className="card" style={{marginBottom:24}}>
+              <h2 style={{margin:'0 0 16px', fontSize:18, fontWeight:600, color:'#1e293b'}}>Inputs</h2>
+              <CurrencyInput id="revenue" label="Company Revenue (\u00a3)" value={inputs.revenue} onChange={update('revenue')} />
+              <CurrencyInput id="otherCosts" label="Other Business Costs, excl. salary/NI (\u00a3)" value={inputs.otherCosts} onChange={update('otherCosts')} />
+              <CurrencyInput id="directorSalary" label="Director Salary (\u00a3)" value={inputs.directorSalary} onChange={update('directorSalary')} />
+              <CurrencyInput id="dividends" label="Dividends Drawn (\u00a3)" value={inputs.dividends} onChange={update('dividends')} />
+              <hr style={{margin:'16px 0', border:'none', borderTop:'1px solid #e2e8f0'}} />
+              <Toggle id="eaToggle" label="Include \u00a35,001 Employee?" checked={inputs.eaToggle} onChange={update('eaToggle')} desc="Adds a \u00a35,001 employee to unlock Employment Allowance" />
+              <Toggle id="pensionToggle" label="Director Pension Sacrifice?" checked={inputs.pensionToggle} onChange={update('pensionToggle')} desc="5% salary sacrifice into director's pension" />
+              <p style={{fontSize:12, color:'#94a3b8', marginTop:16, fontStyle:'italic'}}>This calculator applies England, Wales and Northern Ireland income tax rates. Scottish taxpayers have different non-savings income bands.</p>
+            </div>
+            <div className="card">
+              <h2 style={{margin:'0 0 16px', fontSize:18, fontWeight:600, color:'#1e293b'}}>Detailed Breakdown</h2>
+              <CompanySection inputs={inputs} results={results} />
+              <PersonalSection inputs={inputs} results={results} />
+            </div>
+          </div>
+          <div>
+            <SummaryPanel inputs={inputs} results={results} />
+          </div>
+        </div>
+        <RatesSection />
+        <footer style={{marginTop:32, paddingBottom:24, textAlign:'center', fontSize:12, color:'#94a3b8'}}>
+          For illustrative purposes only — not financial advice. Consult your accountant for your specific situation.
+        </footer>
+      </main>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
