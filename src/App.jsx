@@ -16,6 +16,7 @@ const DEFAULT_INPUTS = {
   employeeSalary: 5001,
   pensionMethod: 'none',
   directorPensionRate: 5,
+  directorPensionFixed: 0,
 };
 
 function App() {
