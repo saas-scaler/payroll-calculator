@@ -44,6 +44,13 @@ export default function CompanySection({ inputs, results }) {
             tooltip="Salary sacrifice reduces both taxable salary and employer NI base. The sacrificed amount goes directly into the director's pension."
           />
         )}
+        {r.directorPensionFixed > 0 && (
+          <Row
+            label="Less: Director Pension (fixed)"
+            value={-r.directorPensionFixed}
+            tooltip="Fixed employer pension contribution paid directly by the company into the director's pension. This is a company cost that reduces taxable profit."
+          />
+        )}
         <Row label="Less: Director Salary" value={-directorSalary} />
         {r.employerPension5k > 0 && (
           <Row label="Less: Employer Pension on Employee" value={-r.employerPension5k} />
