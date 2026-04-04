@@ -66,11 +66,12 @@ export function calculate(inputs) {
   const employerNI5kNet = employerNI5kGross - eaAppliedToEmployee;
   const employerNIDirectorNet = Math.max(0, employerNIDirectorGross - eaAppliedToDirector);
 
+  // Salary sacrifice is part of directorSalary (not an additional cost)
+  // Only directorPensionFixed is an extra company cost
   const taxableCompanyProfit =
     revenue
     - otherCosts
     - employee5kSalary
-    - directorPensionSacrificeAmount
     - directorPensionFixed
     - directorSalary
     - employerPension5k
