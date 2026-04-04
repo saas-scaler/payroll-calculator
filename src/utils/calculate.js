@@ -55,7 +55,10 @@ export function calculate(inputs) {
   // Employment Allowance offsets combined employer NI (director + employee)
   const totalEmployerNIGross = employerNIDirectorGross + employerNI5kGross;
 
-  const employmentAllowanceUsed = eaToggle
+  // EA only available if employee is paid above the secondary threshold (£5,000)
+  const eaEligible = eaToggle && employeeSalary > R.secondaryThreshold;
+
+  const employmentAllowanceUsed = eaEligible
     ? Math.min(R.employmentAllowance, totalEmployerNIGross)
     : 0;
 
@@ -222,7 +225,14 @@ export function calculate(inputs) {
   if (!eaToggle) {
     warnings.push({
       type: 'tip',
-      message: 'Employing one person on £5,001 could unlock £10,500 Employment Allowance, potentially reducing your total tax bill.',
+      message: 'Employing one person above £5,000 could unlock £10,500 Employment Allowance, potentially reducing your total tax bill.',
+    });
+  }
+
+  if (eaToggle && !eaEligible) {
+    warnings.push({
+      type: 'warning',
+      message: 'Employment Allowance requires the employee to be paid above the £5,000 secondary threshold. Increase employee salary above £5,000 to unlock EA.',
     });
   }
 
