@@ -1,89 +1,71 @@
 import { formatCurrency } from '../utils/format';
 import Tooltip from './Tooltip';
 
-function Row({ label, value, indent, highlight, negative, tooltip }) {
+function Row({ label, value, highlight, tooltip }) {
   const isNeg = value < -0.5;
-  const isRefund = negative && isNeg;
 
   return (
     <div
       className={`flex justify-between items-baseline py-1.5 px-2 text-sm ${
         highlight ? 'bg-slate-50 font-semibold border-t border-b border-slate-200' : ''
-      } ${indent ? 'pl-6' : ''}`}
+      }`}
     >
       <span className="text-slate-700">
         {label}
         {tooltip && <Tooltip text={tooltip} />}
       </span>
-      <span className={`font-mono text-right ${isRefund ? 'text-green-600' : isNeg ? 'text-red-600' : 'text-slate-900'}`}>
+      <span className={`font-mono text-right ${isNeg ? 'text-red-600' : 'text-slate-900'}`}>
         {formatCurrency(value)}
       </span>
     </div>
   );
 }
 
-export default function CompanySection({ inputs, results }) {
-  const { revenue, otherCosts, directorSalary } = inputs;
+export default function PersonalSection({ inputs, results }) {
   const r = results;
 
   return (
     <div className="mb-6">
       <h3 className="text-base font-semibold text-slate-800 mb-2 pb-1 border-b-2 border-blue-600">
-        Company Tax Calculation
+        Personal Tax Calculation
       </h3>
       <div className="divide-y divide-slate-100">
-        <Row label="Revenue" value={revenue} />
-        <Row label="Less: Other Business Costs" value={-otherCosts} />
-        {r.employee5kSalary > 0 && (
-          <Row label="Less: Employee Salary" value={-r.employee5kSalary} />
-        )}
-        {r.directorPensionSacrificeAmount > 0 && (
-          <Row
-            label="Less: Director Pension Sacrifice"
-            value={-r.directorPensionSacrificeAmount}
-            tooltip="Salary sacrifice reduces both taxable salary and employer NI base. The sacrificed amount goes directly into the director's pension."
-          />
-        )}
-        {r.directorPensionFixed > 0 && (
-          <Row
-            label="Less: Director Pension (fixed)"
-            value={-r.directorPensionFixed}
-            tooltip="Fixed employer pension contribution paid directly by the company into the director's pension. This is a company cost that reduces taxable profit."
-          />
-        )}
-        <Row label="Less: Director Salary" value={-directorSalary} />
-        {r.employerPension5k > 0 && (
-          <Row label="Less: Employer Pension on Employee" value={-r.employerPension5k} />
-        )}
-        {r.employerNI5kGross > 0 && (
-          <Row label="Employer NI on Employee (gross)" value={-r.employerNI5kGross} />
-        )}
-        <Row label="Employer NI on Director (gross)" value={-r.employerNIDirectorGross} />
-        {r.employmentAllowanceUsed > 0 && (
-          <Row
-            label="Add: Employment Allowance"
-            value={r.employmentAllowanceUsed}
-            tooltip="Employment Allowance of up to £10,500 offsets total employer NI (director + employee). Available when at least one employee is on payroll."
-          />
-        )}
-        {r.employerNI5kNet > 0 && (
-          <Row label="Less: Employer NI on Employee (net)" value={-r.employerNI5kNet} />
-        )}
-        <Row label="Less: Employer NI on Director (net)" value={-r.employerNIDirectorNet} />
-        <Row label="Taxable Company Profit" value={r.taxableCompanyProfit} highlight />
+        <Row label="Director Salary (pensionable)" value={r.taxableSalary} />
+        <Row label="Dividends Drawn" value={inputs.dividends} />
+        <Row label="Total Personal Income" value={r.totalPersonalIncome} />
         <Row
-          label="Less: Corporation Tax"
-          value={-r.corporationTax}
-          negative
-          tooltip={
-            r.taxableCompanyProfit < 0
-              ? 'Loss carry-back: 19% refund on losses, assuming historic profits are available.'
-              : r.taxableCompanyProfit > 50000 && r.taxableCompanyProfit < 250000
-              ? 'Marginal relief applies between £50k–£250k profits, giving an effective rate between 19%–25%.'
-              : undefined
-          }
+          label="Adjusted Personal Allowance"
+          value={r.adjustedPA}
+          tooltip="Personal Allowance of £12,570 tapers by £1 for every £2 of income above £100,000. Dividends count towards the taper threshold even though £500 is tax-free."
         />
-        <Row label="Post-Tax Profit Available for Dividends" value={r.postTaxProfit} highlight />
+        <Row label="Income Tax on Salary" value={-r.incomeTax} />
+        <Row label="Employee NI" value={-r.employeeNI} />
+        <Row
+          label="Dividend Tax"
+          value={-r.dividendTax}
+          tooltip="First £500 of dividends is tax-free. Remaining dividends are taxed at 10.75% (basic), 35.75% (higher) or 39.35% (additional) depending on which band they fall in."
+        />
+        {r.employerPensionContribution > 0 && (
+          <Row
+            label="Employers Pension Contribution"
+            value={r.employerPensionContribution}
+            tooltip="Total employer pension contribution paid by the company into the director's pension. This includes any fixed amount and salary sacrifice. It's not part of take-home pay but is a tax-efficient benefit."
+          />
+        )}
+        {inputs.pensionMethod === 'relief_at_source' && r.directorPensionRASGross > 0 && (
+          <>
+            <Row
+              label="Director Pension (relief at source — gross)"
+              value={r.directorPensionRASGross}
+              tooltip="Gross pension contribution. You pay 80% from net pay; the pension provider reclaims 20% basic rate relief from HMRC. Your basic rate band is extended by the gross amount."
+            />
+            <Row
+              label="Less: Pension cost to director (net of relief)"
+              value={-r.directorPensionRASNetCost}
+            />
+          </>
+        )}
+        <Row label="Net Personal Take-Home" value={r.netTakeHome} highlight />
       </div>
     </div>
   );
