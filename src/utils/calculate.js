@@ -8,12 +8,14 @@ import { RATES } from '../constants/rates';
  * @param {number} inputs.directorSalary
  * @param {number} inputs.dividends
  * @param {boolean} inputs.eaToggle - Include Employee
+ * @param {number} inputs.employeeSalary - Employee salary amount
  * @param {string} inputs.pensionMethod - 'none' | 'salary_sacrifice' | 'relief_at_source'
  * @param {number} inputs.directorPensionRate - Pension rate as percentage (e.g. 5 for 5%)
+ * @param {number} inputs.directorPensionFixed - Fixed employer pension contribution
  * @returns {Object} Full calculation results
  */
 export function calculate(inputs) {
-  const { revenue, otherCosts, directorSalary, dividends, eaToggle, employeeSalary = 5001, pensionMethod = 'none', directorPensionRate = 5 } = inputs;
+  const { revenue, otherCosts, directorSalary, dividends, eaToggle, employeeSalary = 5001, pensionMethod = 'none', directorPensionRate = 5, directorPensionFixed = 0 } = inputs;
   const R = RATES;
   const pensionRate = directorPensionRate / 100;
 
@@ -31,6 +33,9 @@ export function calculate(inputs) {
     ? Math.round(directorSalary * pensionRate * 100) / 100
     : 0;
   const directorPensionRASNetCost = Math.round(directorPensionRASGross * 0.8 * 100) / 100;
+
+  // Total employer pension contribution (fixed + salary sacrifice)
+  const employerPensionContribution = directorPensionFixed + directorPensionSacrificeAmount;
 
   const pensionableSalary = directorSalary - directorPensionSacrificeAmount;
 
@@ -66,6 +71,7 @@ export function calculate(inputs) {
     - otherCosts
     - employee5kSalary
     - directorPensionSacrificeAmount
+    - directorPensionFixed
     - directorSalary
     - employerPension5k
     - employerNI5kNet
@@ -206,8 +212,10 @@ export function calculate(inputs) {
   return {
     // Company
     directorPensionSacrificeAmount,
+    directorPensionFixed,
     directorPensionRASGross,
     directorPensionRASNetCost,
+    employerPensionContribution,
     pensionableSalary,
     employee5kSalary,
     employerPension5k,
