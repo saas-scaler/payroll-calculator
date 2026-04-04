@@ -26,6 +26,8 @@ export default function CompanySection({ inputs, results }) {
   const { revenue, otherCosts, directorSalary } = inputs;
   const r = results;
 
+  const directorSalaryAfterSacrifice = directorSalary - r.directorPensionSacrificeAmount;
+
   return (
     <div className="mb-6">
       <h3 className="text-base font-semibold text-slate-800 mb-2 pb-1 border-b-2 border-blue-600">
@@ -41,17 +43,20 @@ export default function CompanySection({ inputs, results }) {
           <Row
             label="Less: Director Pension Sacrifice"
             value={-r.directorPensionSacrificeAmount}
-            tooltip="Salary sacrifice reduces both taxable salary and employer NI base. The sacrificed amount goes directly into the director's pension."
+            tooltip="Salary sacrifice reduces both taxable salary and employer NI base. This portion of the director's gross salary is redirected to pension."
           />
         )}
         {r.directorPensionFixed > 0 && (
           <Row
             label="Less: Director Pension (fixed)"
             value={-r.directorPensionFixed}
-            tooltip="Fixed employer pension contribution paid directly by the company into the director's pension. This is a company cost that reduces taxable profit."
+            tooltip="Fixed employer pension contribution paid directly by the company into the director's pension. This is an additional company cost on top of salary."
           />
         )}
-        <Row label="Less: Director Salary" value={-directorSalary} />
+        <Row
+          label={r.directorPensionSacrificeAmount > 0 ? "Less: Director Salary (after sacrifice)" : "Less: Director Salary"}
+          value={-directorSalaryAfterSacrifice}
+        />
         {r.employerPension5k > 0 && (
           <Row label="Less: Employer Pension on Employee" value={-r.employerPension5k} />
         )}
