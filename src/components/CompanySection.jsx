@@ -63,18 +63,22 @@ export default function CompanySection({ inputs, results }) {
         {r.employerNI5kGross > 0 && (
           <Row label="Employer NI on Employee (gross)" value={-r.employerNI5kGross} />
         )}
-        <Row label="Employer NI on Director (gross)" value={-r.employerNIDirectorGross} />
-        {r.employmentAllowanceUsed > 0 && (
-          <Row
-            label="Add: Employment Allowance"
-            value={r.employmentAllowanceUsed}
-            tooltip="Employment Allowance of up to £10,500 offsets total employer NI (director + employee). Available when at least one employee is on payroll."
-          />
+        {r.employmentAllowanceUsed > 0 ? (
+          <>
+            <Row label="Employer NI on Director (gross)" value={-r.employerNIDirectorGross} />
+            <Row
+              label="Add: Employment Allowance"
+              value={r.employmentAllowanceUsed}
+              tooltip="Employment Allowance of up to £10,500 offsets total employer NI (director + employee). Available when at least one employee is on payroll."
+            />
+            {r.employerNI5kNet > 0 && (
+              <Row label="Less: Employer NI on Employee (net)" value={-r.employerNI5kNet} />
+            )}
+            <Row label="Less: Employer NI on Director (net)" value={-r.employerNIDirectorNet} />
+          </>
+        ) : (
+          <Row label="Less: Employer NI on Director" value={-r.employerNIDirectorNet} />
         )}
-        {r.employerNI5kNet > 0 && (
-          <Row label="Less: Employer NI on Employee (net)" value={-r.employerNI5kNet} />
-        )}
-        <Row label="Less: Employer NI on Director (net)" value={-r.employerNIDirectorNet} />
         <Row label="Taxable Company Profit" value={r.taxableCompanyProfit} highlight />
         <Row
           label="Less: Corporation Tax"
