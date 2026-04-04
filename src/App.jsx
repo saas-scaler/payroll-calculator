@@ -64,9 +64,27 @@ function App() {
         {/* Rates section */}
         <RatesSection />
 
-        {/* Footer */}
-        <footer className="mt-8 pb-6 text-center text-xs text-slate-400">
-          <p>For illustrative purposes only — not financial advice. Consult your accountant for your specific situation.</p>
+        {/* Disclaimer */}
+        <footer className="mt-10 pb-8">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-6 py-5 text-xs text-slate-500 leading-relaxed space-y-2">
+            <p className="font-semibold text-slate-600 text-sm">Disclaimer</p>
+            <p>
+              This calculator is for <strong>illustrative purposes only</strong> and does not constitute financial, tax or legal advice.
+              You should not rely on it as a substitute for professional advice tailored to your individual circumstances.
+              Always consult a qualified accountant or tax adviser before making decisions about salary, dividends or company tax planning.
+            </p>
+            <p>
+              Calculations are based on published HMRC rates and thresholds for the 2026/27 tax year (England, Wales &amp; Northern Ireland).
+              They assume a single company with no associated companies and no investment income.
+              Scottish taxpayers are subject to different income tax bands and rates on non-savings, non-dividend income.
+              Results may not reflect your situation if you have multiple directorships, benefits in kind, student loan repayments,
+              carried-forward losses, or other taxable income.
+            </p>
+            <p>
+              The employer pension match and director salary sacrifice rates shown are assumptions — actual figures depend on your pension scheme.
+              Corporation tax loss carry-back refunds assume sufficient historic profits are available.
+            </p>
+          </div>
         </footer>
       </main>
     </div>

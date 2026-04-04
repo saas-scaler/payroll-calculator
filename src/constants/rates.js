@@ -13,7 +13,7 @@ export const RATES = {
   ctSmallProfitsRate: 0.19,
   ctMainRateLimit: 250000,
   ctMainRate: 0.25,
-  ctMarginalReliefDenominator: 200000,
+  ctMarginalReliefFraction: 3 / 200,  // HMRC standard fraction for marginal relief
 
   // Income Tax
   personalAllowance: 12570,

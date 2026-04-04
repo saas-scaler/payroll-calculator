@@ -86,12 +86,11 @@ export function calculate(inputs) {
     } else if (taxableCompanyProfit >= R.ctMainRateLimit) {
       corporationTax = taxableCompanyProfit * R.ctMainRate;
     } else {
-      // Marginal relief
+      // Marginal relief — HMRC standard fraction 3/200
       corporationTax =
         taxableCompanyProfit * R.ctMainRate
         - (R.ctMainRateLimit - taxableCompanyProfit)
-          * (taxableCompanyProfit / R.ctMarginalReliefDenominator)
-          * (R.ctMainRate - R.ctSmallProfitsRate);
+          * R.ctMarginalReliefFraction;
     }
   } else {
     // Loss carry-back refund
@@ -130,25 +129,41 @@ export function calculate(inputs) {
     Math.max(0, Math.min(taxableSalary, R.upperEarningsLimit) - R.employeeNIPrimaryThreshold) * R.employeeNIMainRate
     + Math.max(0, taxableSalary - R.upperEarningsLimit) * R.employeeNIUpperRate;
 
-  // Dividend Tax — bands extended by RAS gross contribution
+  // Dividend Tax — dividends stack on top of salary in income bands
+  // The £500 dividend allowance is a nil-rate band applied within whichever
+  // tax band the first £500 of dividends falls in. Dividends covered by the
+  // allowance still occupy band space (they are NOT removed upfront).
   const effectiveAdditionalRateThreshold = R.additionalRateThreshold + directorPensionRASGross;
-  const basicRateBandRemaining = Math.max(0, adjustedPA + effectiveBasicRateBandWidth - taxableSalary);
-  const higherRateBandRemaining = Math.max(
-    0,
-    effectiveAdditionalRateThreshold - taxableSalary - basicRateBandRemaining
-  );
 
-  const taxableDividends = Math.max(0, dividends - R.dividendAllowance);
+  // Unused personal allowance shelters dividends at 0%
+  const unusedPA = Math.max(0, adjustedPA - taxableSalary);
 
-  const dividendBasicTaxed = Math.min(taxableDividends, basicRateBandRemaining);
-  const dividendHigherTaxed = Math.max(
-    0,
-    Math.min(taxableDividends - basicRateBandRemaining, higherRateBandRemaining)
-  );
-  const dividendAdditTaxed = Math.max(
-    0,
-    taxableDividends - basicRateBandRemaining - higherRateBandRemaining
-  );
+  // Band widths available for dividends (after salary has used its share)
+  const basicBandForDividends = effectiveBasicRateBandWidth; // full basic band width
+  const higherBandStart = adjustedPA + effectiveBasicRateBandWidth;
+  const higherBandForDividends = Math.max(0, effectiveAdditionalRateThreshold - higherBandStart);
+
+  // Allocate dividends into bands (full amount, not reduced by allowance)
+  const divsInPA = Math.min(dividends, unusedPA);
+  const divsInBasicBand = Math.min(Math.max(0, dividends - unusedPA), basicBandForDividends);
+  const divsInHigherBand = Math.min(Math.max(0, dividends - unusedPA - basicBandForDividends), higherBandForDividends);
+  const divsInAdditBand = Math.max(0, dividends - unusedPA - basicBandForDividends - higherBandForDividends);
+
+  // Apply dividend allowance (nil-rate) to the first £500 of dividends
+  // starting from the lowest taxable band upward
+  let allowanceLeft = R.dividendAllowance;
+  const basicNilRate = Math.min(divsInBasicBand, allowanceLeft);
+  allowanceLeft -= basicNilRate;
+  const higherNilRate = Math.min(divsInHigherBand, allowanceLeft);
+  allowanceLeft -= higherNilRate;
+  const additNilRate = Math.min(divsInAdditBand, allowanceLeft);
+
+  const dividendBasicTaxed = divsInBasicBand - basicNilRate;
+  const dividendHigherTaxed = divsInHigherBand - higherNilRate;
+  const dividendAdditTaxed = divsInAdditBand - additNilRate;
+
+  // For reporting: total taxable dividends (excluding allowance)
+  const taxableDividends = dividendBasicTaxed + dividendHigherTaxed + dividendAdditTaxed;
 
   const dividendTax =
     dividendBasicTaxed * R.dividendBasicRate
@@ -236,8 +251,10 @@ export function calculate(inputs) {
     salaryAbovePA,
     incomeTax,
     employeeNI,
-    basicRateBandRemaining,
-    higherRateBandRemaining,
+    basicRateBandRemaining: basicBandForDividends,
+    higherRateBandRemaining: higherBandForDividends,
+    unusedPA,
+    divsInPA,
     taxableDividends,
     dividendBasicTaxed,
     dividendHigherTaxed,
