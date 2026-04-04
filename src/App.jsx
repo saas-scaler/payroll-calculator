@@ -1,72 +1,76 @@
-import { formatCurrency } from '../utils/format';
-import Tooltip from './Tooltip';
+import { useState, useMemo } from 'react';
+import InputPanel from './components/InputPanel';
+import CompanySection from './components/CompanySection';
+import PersonalSection from './components/PersonalSection';
+import SummaryPanel from './components/SummaryPanel';
+import RatesSection from './components/RatesSection';
+import Warnings from './components/Warnings';
+import { calculate } from './utils/calculate';
 
-function Row({ label, value, highlight, tooltip }) {
-  const isNeg = value < -0.5;
+const DEFAULT_INPUTS = {
+  revenue: 100000,
+  otherCosts: 3000,
+  directorSalary: 12570,
+  dividends: 87430,
+  eaToggle: false,
+  employeeSalary: 5001,
+  pensionMethod: 'none',
+  directorPensionRate: 5,
+  directorPensionFixed: 0,
+};
+
+function App() {
+  const [inputs, setInputs] = useState(DEFAULT_INPUTS);
+
+  const results = useMemo(() => calculate(inputs), [inputs]);
 
   return (
-    <div
-      className={`flex justify-between items-baseline py-1.5 px-2 text-sm ${
-        highlight ? 'bg-slate-50 font-semibold border-t border-b border-slate-200' : ''
-      }`}
-    >
-      <span className="text-slate-700">
-        {label}
-        {tooltip && <Tooltip text={tooltip} />}
-      </span>
-      <span className={`font-mono text-right ${isNeg ? 'text-red-600' : 'text-slate-900'}`}>
-        {formatCurrency(value)}
-      </span>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-slate-800 text-white shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 py-4 sm:py-5">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            UK Director Payroll &amp; Tax Calculator
+          </h1>
+          <p className="text-slate-300 text-sm mt-0.5">
+            FY 2026/27 — England, Wales &amp; Northern Ireland
+          </p>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        {/* Warnings */}
+        <Warnings warnings={results.warnings} />
+
+        {/* Main grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left column: Inputs + Detailed Breakdown */}
+          <div className="lg:col-span-7 space-y-6">
+            <InputPanel inputs={inputs} setInputs={setInputs} />
+
+            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-5">
+              <h2 className="text-lg font-semibold text-slate-800 mb-4">Detailed Breakdown</h2>
+              <CompanySection inputs={inputs} results={results} />
+              <PersonalSection inputs={inputs} results={results} />
+            </div>
+          </div>
+
+          {/* Right column: Summary + Scenario */}
+          <div className="lg:col-span-5">
+            <SummaryPanel inputs={inputs} results={results} />
+          </div>
+        </div>
+
+        {/* Rates section */}
+        <RatesSection />
+
+        {/* Footer */}
+        <footer className="mt-8 pb-6 text-center text-xs text-slate-400">
+          <p>For illustrative purposes only — not financial advice. Consult your accountant for your specific situation.</p>
+        </footer>
+      </main>
     </div>
   );
 }
 
-export default function PersonalSection({ inputs, results }) {
-  const r = results;
-
-  return (
-    <div className="mb-6">
-      <h3 className="text-base font-semibold text-slate-800 mb-2 pb-1 border-b-2 border-blue-600">
-        Personal Tax Calculation
-      </h3>
-      <div className="divide-y divide-slate-100">
-        <Row label="Director Salary (pensionable)" value={r.taxableSalary} />
-        <Row label="Dividends Drawn" value={inputs.dividends} />
-        <Row label="Total Personal Income" value={r.totalPersonalIncome} />
-        <Row
-          label="Adjusted Personal Allowance"
-          value={r.adjustedPA}
-          tooltip="Personal Allowance of £12,570 tapers by £1 for every £2 of income above £100,000. Dividends count towards the taper threshold even though £500 is tax-free."
-        />
-        <Row label="Income Tax on Salary" value={-r.incomeTax} />
-        <Row label="Employee NI" value={-r.employeeNI} />
-        <Row
-          label="Dividend Tax"
-          value={-r.dividendTax}
-          tooltip="First £500 of dividends is tax-free. Remaining dividends are taxed at 10.75% (basic), 35.75% (higher) or 39.35% (additional) depending on which band they fall in."
-        />
-        {r.employerPensionContribution > 0 && (
-          <Row
-            label="Employers Pension Contribution"
-            value={r.employerPensionContribution}
-            tooltip="Total employer pension contribution paid by the company into the director's pension. This includes any fixed amount and salary sacrifice. It's not part of take-home pay but is a tax-efficient benefit."
-          />
-        )}
-        {inputs.pensionMethod === 'relief_at_source' && r.directorPensionRASGross > 0 && (
-          <>
-            <Row
-              label="Director Pension (relief at source — gross)"
-              value={r.directorPensionRASGross}
-              tooltip="Gross pension contribution. You pay 80% from net pay; the pension provider reclaims 20% basic rate relief from HMRC. Your basic rate band is extended by the gross amount."
-            />
-            <Row
-              label="Less: Pension cost to director (net of relief)"
-              value={-r.directorPensionRASNetCost}
-            />
-          </>
-        )}
-        <Row label="Net Personal Take-Home" value={r.netTakeHome} highlight />
-      </div>
-    </div>
-  );
-}
+export default App;
