@@ -139,9 +139,10 @@ export function calculate(inputs) {
   const unusedPA = Math.max(0, adjustedPA - taxableSalary);
 
   // Band widths available for dividends (after salary has used its share)
-  const basicBandForDividends = effectiveBasicRateBandWidth; // full basic band width
-  const higherBandStart = adjustedPA + effectiveBasicRateBandWidth;
-  const higherBandForDividends = Math.max(0, effectiveAdditionalRateThreshold - higherBandStart);
+  const basicBandForDividends = Math.max(0, effectiveBasicRateBandWidth - salaryAbovePA);
+  const salaryInHigherBand = Math.max(0, salaryAbovePA - effectiveBasicRateBandWidth);
+  const higherBandTotal = Math.max(0, effectiveAdditionalRateThreshold - adjustedPA - effectiveBasicRateBandWidth);
+  const higherBandForDividends = Math.max(0, higherBandTotal - salaryInHigherBand);
 
   // Allocate dividends into bands (full amount, not reduced by allowance)
   const divsInPA = Math.min(dividends, unusedPA);
