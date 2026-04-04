@@ -1,76 +1,187 @@
-import { useState, useMemo } from 'react';
-import InputPanel from './components/InputPanel';
-import CompanySection from './components/CompanySection';
-import PersonalSection from './components/PersonalSection';
-import SummaryPanel from './components/SummaryPanel';
-import RatesSection from './components/RatesSection';
-import Warnings from './components/Warnings';
-import { calculate } from './utils/calculate';
+import { useState, useCallback } from 'react';
+import { parseNumber, formatNumberInput } from '../utils/format';
 
-const DEFAULT_INPUTS = {
-  revenue: 100000,
-  otherCosts: 3000,
-  directorSalary: 12570,
-  dividends: 87430,
-  eaToggle: false,
-  employeeSalary: 5001,
-  pensionMethod: 'none',
-  directorPensionRate: 5,
-  directorPensionFixed: 0,
-};
+function CurrencyInput({ label, value, onChange, id }) {
+  const [displayVal, setDisplayVal] = useState(formatNumberInput(value));
+  const [focused, setFocused] = useState(false);
 
-function App() {
-  const [inputs, setInputs] = useState(DEFAULT_INPUTS);
+  const handleChange = (e) => {
+    const raw = e.target.value;
+    setDisplayVal(raw);
+    const num = parseNumber(raw);
+    onChange(num);
+  };
 
-  const results = useMemo(() => calculate(inputs), [inputs]);
+  const handleFocus = () => {
+    setFocused(true);
+    // Show raw number for easier editing
+    setDisplayVal(value === 0 ? '' : String(value));
+  };
+
+  const handleBlur = () => {
+    setFocused(false);
+    setDisplayVal(formatNumberInput(value));
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-slate-800 text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:py-5">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-            UK Director Payroll &amp; Tax Calculator
-          </h1>
-          <p className="text-slate-300 text-sm mt-0.5">
-            FY 2026/27 — England, Wales &amp; Northern Ireland
-          </p>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        {/* Warnings */}
-        <Warnings warnings={results.warnings} />
-
-        {/* Main grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left column: Inputs + Detailed Breakdown */}
-          <div className="lg:col-span-7 space-y-6">
-            <InputPanel inputs={inputs} setInputs={setInputs} />
-
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-5">
-              <h2 className="text-lg font-semibold text-slate-800 mb-4">Detailed Breakdown</h2>
-              <CompanySection inputs={inputs} results={results} />
-              <PersonalSection inputs={inputs} results={results} />
-            </div>
-          </div>
-
-          {/* Right column: Summary + Scenario */}
-          <div className="lg:col-span-5">
-            <SummaryPanel inputs={inputs} results={results} />
-          </div>
-        </div>
-
-        {/* Rates section */}
-        <RatesSection />
-
-        {/* Footer */}
-        <footer className="mt-8 pb-6 text-center text-xs text-slate-400">
-          <p>For illustrative purposes only — not financial advice. Consult your accountant for your specific situation.</p>
-        </footer>
-      </main>
+    <div className="mb-3">
+      <label htmlFor={id} className="block text-sm font-medium text-slate-700 mb-1">
+        {label}
+      </label>
+      <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">£</span>
+        <input
+          id={id}
+          type="text"
+          inputMode="numeric"
+          className="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          value={displayVal}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+        />
+      </div>
     </div>
   );
 }
 
-export default App;
+function Toggle({ label, checked, onChange, id, description }) {
+  return (
+    <div className="mb-3">
+      <div className="flex items-center justify-between">
+        <label htmlFor={id} className="text-sm font-medium text-slate-700">
+          {label}
+        </label>
+        <button
+          id={id}
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          onClick={() => onChange(!checked)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+            checked ? 'bg-blue-600' : 'bg-slate-300'
+          }`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              checked ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
+        </button>
+      </div>
+      {description && (
+        <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+      )}
+    </div>
+  );
+}
+
+export default function InputPanel({ inputs, setInputs }) {
+  const update = useCallback(
+    (field) => (value) => {
+      setInputs((prev) => ({ ...prev, [field]: value }));
+    },
+    [setInputs]
+  );
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-5">
+      <h2 className="text-lg font-semibold text-slate-800 mb-4">Inputs</h2>
+
+      <CurrencyInput
+        id="revenue"
+        label="Company Revenue (£)"
+        value={inputs.revenue}
+        onChange={update('revenue')}
+      />
+      <CurrencyInput
+        id="otherCosts"
+        label="Other Business Costs, excl. salary/NI (£)"
+        value={inputs.otherCosts}
+        onChange={update('otherCosts')}
+      />
+      <CurrencyInput
+        id="directorSalary"
+        label="Director Salary (£)"
+        value={inputs.directorSalary}
+        onChange={update('directorSalary')}
+      />
+      <CurrencyInput
+        id="dividends"
+        label="Dividends Drawn (£)"
+        value={inputs.dividends}
+        onChange={update('dividends')}
+      />
+
+      <hr className="my-4 border-slate-200" />
+
+      <Toggle
+        id="eaToggle"
+        label="Include Employee?"
+        checked={inputs.eaToggle}
+        onChange={update('eaToggle')}
+        description="Adds an employee to unlock Employment Allowance"
+      />
+      {inputs.eaToggle && (
+        <CurrencyInput
+          id="employeeSalary"
+          label="Employee Salary (£)"
+          value={inputs.employeeSalary}
+          onChange={update('employeeSalary')}
+        />
+      )}
+
+      <hr className="my-4 border-slate-200" />
+
+      <CurrencyInput
+        id="directorPensionFixed"
+        label="Director Pension — Fixed Amount (£)"
+        value={inputs.directorPensionFixed}
+        onChange={update('directorPensionFixed')}
+      />
+      <div className="mb-3">
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Director Pension Method
+        </label>
+        <select
+          id="pensionMethod"
+          value={inputs.pensionMethod}
+          onChange={(e) => update('pensionMethod')(e.target.value)}
+          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+        >
+          <option value="none">None</option>
+          <option value="salary_sacrifice">Salary Sacrifice</option>
+          <option value="relief_at_source">Relief at Source</option>
+        </select>
+        <p className="text-xs text-slate-500 mt-0.5">
+          {inputs.pensionMethod === 'salary_sacrifice'
+            ? 'Salary is reduced before tax & NI — saves employer and employee NI'
+            : inputs.pensionMethod === 'relief_at_source'
+            ? 'Director pays from net pay (80%), pension provider reclaims 20% basic rate relief'
+            : 'No additional percentage-based pension contribution'}
+        </p>
+      </div>
+      {inputs.pensionMethod !== 'none' && (
+        <div className="mb-3">
+          <label htmlFor="directorPensionRate" className="block text-sm font-medium text-slate-700 mb-1">
+            Director Pension Rate (%)
+          </label>
+          <input
+            id="directorPensionRate"
+            type="number"
+            min="0"
+            max="100"
+            step="1"
+            value={inputs.directorPensionRate}
+            onChange={(e) => update('directorPensionRate')(parseFloat(e.target.value) || 0)}
+            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          />
+        </div>
+      )}
+
+      <p className="text-xs text-slate-400 mt-4 italic">
+        This calculator applies England, Wales and Northern Ireland income tax rates. Scottish taxpayers have different non-savings income bands.
+      </p>
+    </div>
+  );
+}
