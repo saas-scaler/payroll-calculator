@@ -8,14 +8,14 @@ import Warnings from './components/Warnings';
 import { calculate } from './utils/calculate';
 
 const DEFAULT_INPUTS = {
-  revenue: 100000,
-  otherCosts: 3000,
-  directorSalary: 12570,
-  dividends: 87430,
+  revenue: 0,
+  otherCosts: 0,
+  directorSalary: 0,
+  dividends: 0,
   eaToggle: false,
-  employeeSalary: 5001,
+  employeeSalary: 0,
   pensionMethod: 'none',
-  directorPensionRate: 5,
+  directorPensionRate: 0,
   directorPensionFixed: 0,
 };
 
