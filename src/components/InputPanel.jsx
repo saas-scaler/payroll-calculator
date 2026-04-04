@@ -130,6 +130,15 @@ export default function InputPanel({ inputs, setInputs }) {
           onChange={update('employeeSalary')}
         />
       )}
+
+      <hr className="my-4 border-slate-200" />
+
+      <CurrencyInput
+        id="directorPensionFixed"
+        label="Director Pension — Fixed Amount (£)"
+        value={inputs.directorPensionFixed}
+        onChange={update('directorPensionFixed')}
+      />
       <div className="mb-3">
         <label className="block text-sm font-medium text-slate-700 mb-1">
           Director Pension Method
@@ -149,7 +158,7 @@ export default function InputPanel({ inputs, setInputs }) {
             ? 'Salary is reduced before tax & NI — saves employer and employee NI'
             : inputs.pensionMethod === 'relief_at_source'
             ? 'Director pays from net pay (80%), pension provider reclaims 20% basic rate relief'
-            : 'No director pension contribution'}
+            : 'No additional percentage-based pension contribution'}
         </p>
       </div>
       {inputs.pensionMethod !== 'none' && (
