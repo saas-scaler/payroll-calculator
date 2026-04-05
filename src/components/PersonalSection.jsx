@@ -47,11 +47,24 @@ export default function PersonalSection({ inputs, results }) {
         />
         <Row label="Net Personal Take-Home" value={r.netTakeHome} highlight />
         {r.pensionPotContribution > 0 && (
-          <Row
-            label="Pension pot contribution (not cash)"
-            value={r.pensionPotContribution}
-            tooltip="Total pension contributions from all sources: employer fixed amount, salary sacrifice, and/or relief at source. This goes into the director's pension — it is not part of cash take-home pay."
-          />
+          <div className="flex justify-between items-baseline py-1.5 px-2 text-sm">
+            <span className="text-slate-500 italic">
+              Pension Contribution (not cash — locked until age 57)
+            </span>
+            <span className="font-mono text-right text-slate-500 italic">
+              {formatCurrency(r.pensionPotContribution)}
+            </span>
+          </div>
+        )}
+        {r.pensionPotContribution > 0 && (
+          <div className="flex justify-between items-baseline py-1.5 px-2 text-sm bg-slate-50/50 border-t border-slate-100">
+            <span className="text-slate-600 italic">
+              Total Wealth Created (cash + pension)
+            </span>
+            <span className="font-mono text-right text-slate-600 italic">
+              {formatCurrency(r.totalWealthCreated)}
+            </span>
+          </div>
         )}
       </div>
     </div>

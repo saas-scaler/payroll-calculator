@@ -174,11 +174,15 @@ export function calculate(inputs) {
     + dividendHigherTaxed * R.dividendHigherRate
     + dividendAdditTaxed * R.dividendAdditionalRate;
 
-  const netTakeHome = directorSalary + dividends - incomeTax - employeeNI - dividendTax;
+  // Net take-home = cash salary (after sacrifice) + dividends − personal taxes
+  const netTakeHome = (directorSalary - directorPensionSacrificeAmount) + dividends - incomeTax - employeeNI - dividendTax;
 
-  // Total pension pot contribution (not cash to director)
+  // Pension contribution (not cash — goes to pension pot)
   // Includes: fixed employer contribution + salary sacrifice + relief at source gross
   const pensionPotContribution = directorPensionFixed + directorPensionSacrificeAmount + directorPensionRASGross;
+
+  // Total wealth = cash take-home + pension
+  const totalWealthCreated = netTakeHome + pensionPotContribution;
 
   // ── Step 3: Summary ──
 
@@ -277,6 +281,7 @@ export function calculate(inputs) {
     dividendTax,
     netTakeHome,
     pensionPotContribution,
+    totalWealthCreated,
 
     // Summary
     totalTax,
