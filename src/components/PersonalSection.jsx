@@ -45,27 +45,14 @@ export default function PersonalSection({ inputs, results }) {
           value={-r.dividendTax}
           tooltip="First £500 of dividends is tax-free. Remaining dividends are taxed at 10.75% (basic), 35.75% (higher) or 39.35% (additional) depending on which band they fall in."
         />
-        {r.employerPensionContribution > 0 && (
+        <Row label="Net Personal Take-Home" value={r.netTakeHome} highlight />
+        {r.pensionPotContribution > 0 && (
           <Row
-            label="Employers Pension Contribution"
-            value={r.employerPensionContribution}
-            tooltip="Total employer pension contribution paid by the company into the director's pension. This includes any fixed amount and salary sacrifice. It's not part of take-home pay but is a tax-efficient benefit."
+            label="Pension pot contribution (not cash)"
+            value={r.pensionPotContribution}
+            tooltip="Total pension contributions from all sources: employer fixed amount, salary sacrifice, and/or relief at source. This goes into the director's pension — it is not part of cash take-home pay."
           />
         )}
-        {inputs.pensionMethod === 'relief_at_source' && r.directorPensionRASGross > 0 && (
-          <>
-            <Row
-              label="Director Pension (relief at source — gross)"
-              value={r.directorPensionRASGross}
-              tooltip="Gross pension contribution. You pay 80% from net pay; the pension provider reclaims 20% basic rate relief from HMRC. Your basic rate band is extended by the gross amount."
-            />
-            <Row
-              label="Less: Pension cost to director (net of relief)"
-              value={-r.directorPensionRASNetCost}
-            />
-          </>
-        )}
-        <Row label="Net Personal Take-Home" value={r.netTakeHome} highlight />
       </div>
     </div>
   );

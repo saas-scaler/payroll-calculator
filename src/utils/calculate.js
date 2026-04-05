@@ -174,7 +174,11 @@ export function calculate(inputs) {
     + dividendHigherTaxed * R.dividendHigherRate
     + dividendAdditTaxed * R.dividendAdditionalRate;
 
-  const netTakeHome = directorSalary + dividends - incomeTax - employeeNI - dividendTax - directorPensionRASNetCost;
+  const netTakeHome = directorSalary + dividends - incomeTax - employeeNI - dividendTax;
+
+  // Total pension pot contribution (not cash to director)
+  // Includes: fixed employer contribution + salary sacrifice + relief at source gross
+  const pensionPotContribution = directorPensionFixed + directorPensionSacrificeAmount + directorPensionRASGross;
 
   // ── Step 3: Summary ──
 
@@ -272,6 +276,7 @@ export function calculate(inputs) {
     dividendAdditTaxed,
     dividendTax,
     netTakeHome,
+    pensionPotContribution,
 
     // Summary
     totalTax,
