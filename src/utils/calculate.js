@@ -2,14 +2,16 @@ import { RATES } from '../constants/rates';
 
 /**
  * Calculate personal tax for a single director.
- * @param {Object} director - { name, salary, dividends }
- * @param {Object} opts - { pensionMethod, pensionRate, directorPensionFixed }
+ * Pension settings are per-director: pensionMethod, pensionRate, pensionFixed.
+ * @param {Object} director - { name, salary, dividends, pensionMethod, pensionRate, pensionFixed }
  * @param {Object} R - RATES constants
  * @returns {Object} Per-director tax results
  */
-function calculateDirectorPersonalTax(director, opts, R) {
+function calculateDirectorPersonalTax(director, R) {
   const { salary: directorSalary, dividends } = director;
-  const { pensionMethod, pensionRate, directorPensionFixed } = opts;
+  const pensionMethod = director.pensionMethod || 'none';
+  const pensionRate = (director.pensionRate || 0) / 100;
+  const directorPensionFixed = director.pensionFixed || 0;
 
   const isSalarySacrifice = pensionMethod === 'salary_sacrifice';
   const isReliefAtSource = pensionMethod === 'relief_at_source';
@@ -140,13 +142,12 @@ function calculateDirectorPersonalTax(director, opts, R) {
  * @returns {Object} Full calculation results
  */
 export function calculate(inputs) {
-  const { revenue, otherCosts, directors = [{ salary: 0, dividends: 0 }], eaToggle, employeeSalary = 0, pensionMethod = 'none', directorPensionRate = 5, directorPensionFixed = 0 } = inputs;
+  const { revenue, otherCosts, directors = [{ salary: 0, dividends: 0 }], eaToggle, employeeSalary = 0 } = inputs;
   const R = RATES;
-  const pensionRate = directorPensionRate / 100;
 
-  // ── Per-director calculations ──
+  // ── Per-director calculations (pension settings are per-director) ──
   const directorResults = directors.map((d) =>
-    calculateDirectorPersonalTax(d, { pensionMethod, pensionRate, directorPensionFixed }, R)
+    calculateDirectorPersonalTax(d, R)
   );
 
   // ── Aggregate company-level figures ──

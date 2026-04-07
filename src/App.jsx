@@ -11,6 +11,9 @@ const DEFAULT_DIRECTOR = {
   name: 'Director 1',
   salary: 0,
   dividends: 0,
+  pensionMethod: 'none',
+  pensionRate: 0,
+  pensionFixed: 0,
 };
 
 const DEFAULT_INPUTS = {
@@ -19,9 +22,6 @@ const DEFAULT_INPUTS = {
   directors: [{ ...DEFAULT_DIRECTOR }],
   eaToggle: false,
   employeeSalary: 0,
-  pensionMethod: 'none',
-  directorPensionRate: 0,
-  directorPensionFixed: 0,
 };
 
 export { DEFAULT_DIRECTOR };

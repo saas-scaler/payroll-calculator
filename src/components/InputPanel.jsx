@@ -108,6 +108,53 @@ function DirectorCard({ director, index, updateDirector, removeDirector, canRemo
         value={director.dividends}
         onChange={(val) => updateDirector(index, 'dividends', val)}
       />
+
+      {/* Pension settings per director */}
+      <CurrencyInput
+        id={`pensionFixed-${index}`}
+        label="Pension — Fixed Amount (£)"
+        value={director.pensionFixed}
+        onChange={(val) => updateDirector(index, 'pensionFixed', val)}
+      />
+      <div className="mb-3">
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Pension Method
+        </label>
+        <select
+          id={`pensionMethod-${index}`}
+          value={director.pensionMethod}
+          onChange={(e) => updateDirector(index, 'pensionMethod', e.target.value)}
+          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+        >
+          <option value="none">None</option>
+          <option value="salary_sacrifice">Salary Sacrifice</option>
+          <option value="relief_at_source">Relief at Source</option>
+        </select>
+        <p className="text-xs text-slate-500 mt-0.5">
+          {director.pensionMethod === 'salary_sacrifice'
+            ? 'Salary is reduced before tax & NI — saves employer and employee NI'
+            : director.pensionMethod === 'relief_at_source'
+            ? 'Pays from net pay (80%), pension provider reclaims 20% basic rate relief'
+            : 'No additional percentage-based pension contribution'}
+        </p>
+      </div>
+      {director.pensionMethod !== 'none' && (
+        <div className="mb-3">
+          <label htmlFor={`pensionRate-${index}`} className="block text-sm font-medium text-slate-700 mb-1">
+            Pension Rate (%)
+          </label>
+          <input
+            id={`pensionRate-${index}`}
+            type="number"
+            min="0"
+            max="100"
+            step="1"
+            value={director.pensionRate}
+            onChange={(e) => updateDirector(index, 'pensionRate', parseFloat(e.target.value) || 0)}
+            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -217,54 +264,6 @@ export default function InputPanel({ inputs, setInputs }) {
           value={inputs.employeeSalary}
           onChange={update('employeeSalary')}
         />
-      )}
-
-      <hr className="my-4 border-slate-200" />
-
-      <CurrencyInput
-        id="directorPensionFixed"
-        label="Director Pension — Fixed Amount (£)"
-        value={inputs.directorPensionFixed}
-        onChange={update('directorPensionFixed')}
-      />
-      <div className="mb-3">
-        <label className="block text-sm font-medium text-slate-700 mb-1">
-          Director Pension Method
-        </label>
-        <select
-          id="pensionMethod"
-          value={inputs.pensionMethod}
-          onChange={(e) => update('pensionMethod')(e.target.value)}
-          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-        >
-          <option value="none">None</option>
-          <option value="salary_sacrifice">Salary Sacrifice</option>
-          <option value="relief_at_source">Relief at Source</option>
-        </select>
-        <p className="text-xs text-slate-500 mt-0.5">
-          {inputs.pensionMethod === 'salary_sacrifice'
-            ? 'Salary is reduced before tax & NI — saves employer and employee NI'
-            : inputs.pensionMethod === 'relief_at_source'
-            ? 'Director pays from net pay (80%), pension provider reclaims 20% basic rate relief'
-            : 'No additional percentage-based pension contribution'}
-        </p>
-      </div>
-      {inputs.pensionMethod !== 'none' && (
-        <div className="mb-3">
-          <label htmlFor="directorPensionRate" className="block text-sm font-medium text-slate-700 mb-1">
-            Director Pension Rate (%)
-          </label>
-          <input
-            id="directorPensionRate"
-            type="number"
-            min="0"
-            max="100"
-            step="1"
-            value={inputs.directorPensionRate}
-            onChange={(e) => update('directorPensionRate')(parseFloat(e.target.value) || 0)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-          />
-        </div>
       )}
 
       <p className="text-xs text-slate-400 mt-4 italic">
