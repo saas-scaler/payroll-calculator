@@ -1,340 +1,180 @@
-# Claude Code Prompt: UK Director Payroll & Tax Calculator Web App (FY 2026/27)
+# Change Spec: Multi-Director Support + Employment Allowance Auto-Eligibility
 
-## Project overview
+## Summary
 
-Build a single-page web application: a UK limited company director payroll and tax calculator for FY 2026/27. The app calculates the total tax position — combining company-level costs (corporation tax, employer NI, salary, pension) with personal tax (income tax, employee NI, dividend tax) — and shows net take-home pay and overall tax efficiency.
+Two changes to the existing UK Director Payroll & Tax Calculator at payroll.saas-scaler.com:
 
-## Tech stack
-
-- **React** (with hooks) as the UI framework
-- **Tailwind CSS** for styling
-- No backend required — all calculations are pure client-side JavaScript
-- No external dependencies beyond React and Tailwind
-- Deploy as a static site (Vite + React is fine)
+1. **Multi-director support** — allow 1–4 directors, each with their own salary and dividends, with individual personal tax calculations and aggregated company-level costs.
+2. **Employment Allowance auto-eligibility** — automatically apply EA when 2+ directors are on payroll earning more than £5,000 each (not just via the £5,001 employee toggle).
 
 ---
 
-## Inputs (user-editable)
+## Change 1: Multi-Director Support
 
-The app should have a clearly labelled inputs panel with these fields:
+### Input changes
 
-| Field | Type | Default |
-|---|---|---|
-| Company Revenue (£) | Number input | 113,200 |
-| Other Business Costs, excl. salary/NI (£) | Number input | 3,000 |
-| Director Salary (£) | Number input | 12,570 |
-| Dividends Drawn (£) | Number input | 87,430 |
-| Include £5,001 Employee? | Toggle YES/NO | NO |
-| Director Pension Sacrifice? | Toggle YES/NO | NO |
-
-All number inputs should accept comma-formatted values and update results instantly on change (no submit button).
-
----
-
-## Tax rates (FY 2026/27) — hardcoded constants, clearly named
+Replace the single Director Salary and Dividends Drawn fields with a **directors array**. The state shape changes from:
 
 ```js
-const RATES = {
-  // Employer NI
-  secondaryThreshold: 5000,
-  employerNIRate: 0.15,
-  employmentAllowance: 10500,
+// BEFORE
+{ revenue, otherCosts, directorSalary, dividends, eaToggle, pensionToggle }
 
-  // Pension
-  employerPensionMatch: 0.03,      // 3% of £5,001 employee salary
-  directorPensionSacrifice: 0.05,  // 5% of director salary (salary sacrifice)
-
-  // Corporation Tax
-  ctSmallProfitsLimit: 50000,
-  ctSmallProfitsRate: 0.19,
-  ctMainRateLimit: 250000,
-  ctMainRate: 0.25,
-  ctMarginalReliefDenominator: 200000,
-
-  // Income Tax
-  personalAllowance: 12570,
-  paTaperThreshold: 100000,
-  basicRateBandWidth: 37700,       // £12,571 to £50,270
-  basicRate: 0.20,
-  higherRateBandUpperAbovePA: 112570, // £50,271 to £125,140
-  higherRate: 0.40,
-  additionalRate: 0.45,
-
-  // Employee NI
-  employeeNIPrimaryThreshold: 12570,
-  employeeNIMainRate: 0.08,        // 8% on £12,570–£50,270
-  upperEarningsLimit: 50270,
-  employeeNIUpperRate: 0.02,       // 2% above UEL
-
-  // Dividend Tax
-  dividendAllowance: 500,
-  dividendBasicRate: 0.1075,       // increased from 8.75% April 2026
-  dividendHigherRate: 0.3575,      // increased from 33.75% April 2026
-  dividendAdditionalRate: 0.3935,
-  additionalRateThreshold: 125140,
-};
+// AFTER
+{ revenue, otherCosts, directors: [{ name, salary, dividends }, ...], eaToggle, pensionToggle }
 ```
 
-These should be displayed in a collapsible "Rates & Assumptions" section at the bottom of the page so they are visible but not cluttering the main UI.
+Default state: one director with `{ name: '', salary: 12570, dividends: 87430 }`.
+
+**UI requirements:**
+- Show a "Directors" heading between the company inputs and the toggles, with an **"Add Director"** button (max 4 directors)
+- Each director renders in a distinct card (subtle background, e.g. `bg-slate-50` with border) showing:
+  - Header: "Director N" with a **"Remove"** button (hidden when only 1 director)
+  - Name (optional text input, placeholder "Director N")
+  - Salary (£) — currency input, default £12,570
+  - Dividends Drawn (£) — currency input, default £0 for added directors
+- Revenue, Other Business Costs, and the two toggles remain as company-level inputs outside the director cards
+
+### Calculation changes — Company section
+
+Per-director employer NI is calculated individually, then aggregated:
+
+```
+// For EACH director:
+directorPensionSacrificeAmount[i] =
+  IF(pensionToggle) ROUND(directors[i].salary × 0.05, 2) ELSE 0
+
+pensionableSalary[i] = directors[i].salary − directorPensionSacrificeAmount[i]
+
+employerNIDirectorGross[i] = MAX(0, (pensionableSalary[i] − 5000) × 0.15)
+
+// Aggregate:
+totalDirectorSalaries = SUM(directors[*].salary)
+totalDirectorPensionSacrifice = SUM(directorPensionSacrificeAmount[*])
+totalEmployerNIDirectorGross = SUM(employerNIDirectorGross[*])
+```
+
+Employment Allowance offsets the **combined** employer NI across all directors (not per-director). The rest of the company calculation (taxable profit, corporation tax) works the same but uses these aggregated totals.
+
+### Calculation changes — Personal tax
+
+Each director gets their own **complete, independent** personal tax calculation — their own Personal Allowance, their own tax bands, their own £500 dividend allowance. No sharing or pooling between directors.
+
+The existing personal tax logic doesn't change; it just runs once per director instead of once overall. Aggregate totals for the summary:
+
+```
+totalIncomeTax = SUM(incomeTax[*])
+totalEmployeeNI = SUM(employeeNI[*])
+totalDividendTax = SUM(dividendTax[*])
+totalNetTakeHome = SUM(netTakeHome[*])
+totalDividends = SUM(directors[*].dividends)
+```
+
+### Display changes — Company section
+
+- "Less: Director Salary" becomes "Less: Director Salaries (total)" when 2+ directors, with indented sub-lines showing each director's name and salary
+- "Less: Director Pension Sacrifice" appends "(all directors)" when multiple
+- "Employer NI on Director" becomes "Employer NI on Directors" when multiple
+- All other company lines work the same (they already use totals)
+
+### Display changes — Personal section
+
+- **Single director:** display as before, no heading above the breakdown
+- **Multiple directors:** show each director's full breakdown under their name (or "Director N"), each with their own highlighted "Net Take-Home" row
+- After all directors, show a **"Combined Net Take-Home (all directors)"** summary in a blue highlighted box
+
+### Display changes — Tax Summary
+
+When multiple directors, append "(all directors)" to the Income Tax, Employee NI, and Dividend Tax labels.
+
+### Display changes — Scenario comparison
+
+- Apply the scenario salary to **ALL directors** equally (each director's dividends stay as set)
+- When multiple directors, show a note: *"Each scenario applies the same salary to all X directors. Dividends remain as set per director."*
+- Row labels change to "Director Salary (each)", "Income Tax (total)", "Employee NI (total)", "Dividend Tax (total)", "Net Take-Home (total)"
+- The "Custom" column uses the first director's salary as the reference
+
+### Warning changes
+
+- "Dividends exceed post-tax profit" compares `totalDividends` (sum across all directors) vs `postTaxProfit`
+- Personal Allowance taper warnings are **per-director**, prefixed with the director's name: e.g. "Director 1: Personal Allowance tapered to £X,XXX..."
 
 ---
 
-## Calculation logic
+## Change 2: Employment Allowance Auto-Eligibility
 
-Implement a pure function `calculate(inputs)` that returns a results object. All logic below must be implemented exactly as specified.
+### Rule
 
-### Step 1 — Company section
-
-```
-pensionableSalary = directorSalary - directorPensionSacrificeAmount
-
-directorPensionSacrificeAmount =
-  IF(pensionToggle=YES) ROUND(directorSalary × directorPensionSacrificeRate, 2)
-  ELSE 0
-
-employee5kSalary      = IF(eaToggle=YES) 5001 ELSE 0
-employerPension5k     = IF(eaToggle=YES) ROUND(5001 × employerPensionMatch, 2) ELSE 0
-employerNI5k          = IF(eaToggle=YES) MAX(0, (5001 − secondaryThreshold) × employerNIRate) ELSE 0
-
-employerNIDirectorGross = MAX(0, (pensionableSalary − secondaryThreshold) × employerNIRate)
-
-employmentAllowanceUsed =
-  IF(eaToggle=YES) MIN(employmentAllowance, employerNIDirectorGross) ELSE 0
-
-employerNIDirectorNet = MAX(0, employerNIDirectorGross − employmentAllowanceUsed)
-
-taxableCompanyProfit =
-  revenue
-  − otherCosts
-  − employee5kSalary
-  − directorPensionSacrificeAmount   ← sacrifice reduces taxable profit
-  − directorSalary
-  − employerPension5k
-  − employerNI5k
-  − employerNIDirectorNet
-```
-
-**Corporation Tax with marginal relief and loss carry-back:**
-```
-IF taxableCompanyProfit >= 0:
-  IF profit <= ctSmallProfitsLimit:
-    ct = profit × ctSmallProfitsRate
-  ELSE IF profit >= ctMainRateLimit:
-    ct = profit × ctMainRate
-  ELSE (marginal relief):
-    ct = profit × ctMainRate
-      − (ctMainRateLimit − profit) × (profit / ctMarginalReliefDenominator)
-      × (ctMainRate − ctSmallProfitsRate)
-ELSE (loss — refund against historic profits):
-  ct = taxableCompanyProfit × ctSmallProfitsRate
-  // result is negative (a refund). Show as NEGATIVE in the summary.
-
-corporationTax = ct  ← negative means payable, positive means refund
-postTaxProfit = taxableCompanyProfit − ct
-```
-
-### Step 2 — Personal tax
+EA is available when the company has more than one person on payroll earning above the secondary threshold (£5,000):
 
 ```
-// Taxable/pensionable salary = gross salary reduced by sacrifice
-taxableSalary = directorSalary − directorPensionSacrificeAmount
-
-totalPersonalIncome = taxableSalary + dividends
-
-// Personal Allowance — tapers above £100k
-adjustedPA = MAX(0, personalAllowance − MAX(0, (totalPersonalIncome − paTaperThreshold) / 2))
-// Note: dividends count towards the taper even though £500 is tax-free
-
-// Income Tax on salary (layered bands, salary uses PA first)
-salaryAbovePA = MAX(0, taxableSalary − adjustedPA)
-incomeTax =
-  MIN(salaryAbovePA, basicRateBandWidth) × basicRate
-  + MAX(0, MIN(salaryAbovePA − basicRateBandWidth, higherRateBandUpperAbovePA − basicRateBandWidth)) × higherRate
-  + MAX(0, salaryAbovePA − higherRateBandUpperAbovePA) × additionalRate
-
-// Employee NI (on pensionable/taxable salary)
-employeeNI =
-  MAX(0, MIN(taxableSalary, upperEarningsLimit) − employeeNIPrimaryThreshold) × employeeNIMainRate
-  + MAX(0, taxableSalary − upperEarningsLimit) × employeeNIUpperRate
-
-// Dividend tax — dividends stack on top of salary
-// How much basic rate band is left after salary?
-basicRateBandRemaining = MAX(0, adjustedPA + basicRateBandWidth − taxableSalary)
-// How much higher rate band space is left?
-higherRateBandRemaining = MAX(0, additionalRateThreshold − taxableSalary − basicRateBandRemaining)
-
-taxableDividends = MAX(0, dividends − dividendAllowance)
-
-dividendBasicTaxed  = MIN(taxableDividends, basicRateBandRemaining)
-dividendHigherTaxed = MAX(0, MIN(taxableDividends − basicRateBandRemaining, higherRateBandRemaining))
-dividendAdditTaxed  = MAX(0, taxableDividends − basicRateBandRemaining − higherRateBandRemaining)
-
-dividendTax =
-  dividendBasicTaxed × dividendBasicRate
-  + dividendHigherTaxed × dividendHigherRate
-  + dividendAdditTaxed × dividendAdditionalRate
-
-// Net take-home = gross salary + dividends − all personal taxes
-// Note: uses gross salary (director receives gross salary in cash)
-netTakeHome = directorSalary + dividends − incomeTax − employeeNI − dividendTax
+directorsAboveThreshold = directors.filter(d => d.salary > 5000).length
+eaEligible = (directorsAboveThreshold >= 2) OR (eaToggle === true)
 ```
 
-### Step 3 — Summary
+The £5,001 employee costs (salary, pension, employer NI) still only apply when `eaToggle = true`. But `employmentAllowanceUsed` is calculated whenever `eaEligible = true`.
+
+### Calculation change
 
 ```
-totalTax =
-  −corporationTax    ← flip sign: negative CT (payable) becomes positive cost
-                       positive CT (refund) becomes NEGATIVE in summary
-  + incomeTax
-  + employeeNI
-  + employerNIDirectorNet + employerNI5k + employerPension5k
-  + dividendTax
+// BEFORE
+employmentAllowanceUsed = IF(eaToggle) MIN(10500, totalEmployerNIDirectorGross) ELSE 0
 
-effectiveTaxRate = totalTax / revenue   (if revenue > 0)
-takeHomeAsPercentOfRevenue = netTakeHome / revenue
+// AFTER
+employmentAllowanceUsed = IF(eaEligible) MIN(10500, totalEmployerNIDirectorGross) ELSE 0
 ```
+
+Everything else in the company calculation stays the same.
+
+### UI changes
+
+When 2+ directors are earning above £5,000:
+- Show a **green banner** above the EA toggle: *"Employment Allowance automatically available — you have X directors on payroll earning above £5,000."*
+- Relabel the toggle from "Include £5,001 Employee?" to **"Also include £5,001 Employee?"**
+- Change the toggle description from "Adds a £5,001 employee to unlock Employment Allowance" to **"EA is already unlocked. This adds a £5,001 employee salary, pension and NI costs."**
+
+Otherwise (single director, or multiple directors but fewer than 2 above £5,000):
+- No banner, toggle label and description unchanged from current behaviour
+
+### Warning changes
+
+- The existing EA tip ("Employing one person on £5,001 could unlock...") should only show when `eaEligible = false` (not just when `eaToggle = false`)
+- Add a new info-level warning when EA is auto-enabled via multiple directors and eaToggle is off: *"Employment Allowance is automatically available because you have 2+ directors on payroll earning above £5,000. You can still add a £5,001 employee if needed."*
 
 ---
 
-## Validation warnings (show inline, non-blocking)
+## Also fix: Corporation Tax sign convention
 
-1. **Dividends exceed post-tax profit** — warn if `dividends > postTaxProfit`
-2. **Personal Allowance tapered** — warn if `totalPersonalIncome > 100,000`, show effective amount
-3. **Allowance fully lost** — warn if `totalPersonalIncome >= 125,140`, note 60% effective marginal rate between £100k–£125,140
-4. **Loss scenario** — if `taxableCompanyProfit < 0`, note "CT refund assumes historic profits available — verify with your accountant"
-5. **EA eligibility** — if eaToggle = NO, show a tip: "Employing one person on £5,001 could unlock £10,500 Employment Allowance"
-
----
-
-## Results display
-
-Show two panels side by side on desktop, stacked on mobile:
-
-### Left panel — Detailed breakdown
-
-Show each line item in three sections exactly matching the Excel structure:
-
-**Company Tax Calculation**
-- Revenue
-- Less: Other Business Costs
-- Less: £5,001 Employee Salary (if applicable)
-- Less: Director Pension Sacrifice (if applicable)
-- Less: Director Salary
-- Less: Employer Pension on Employee (if applicable)
-- Less: Employer NI on Employee (if applicable)
-- Employer NI on Director (gross)
-- Add: Employment Allowance (if applicable)
-- Less: Employer NI on Director (net)
-- = **Taxable Company Profit** (highlighted)
-- Less: Corporation Tax (show as negative if refund)
-- = **Post-Tax Profit Available for Dividends** (highlighted)
-
-**Personal Tax Calculation**
-- Director Salary (pensionable)
-- Dividends Drawn
-- Total Personal Income
-- Adjusted Personal Allowance
-- Income Tax on Salary
-- Employee NI
-- Dividend Tax
-- Director Pension (company contribution) — only if pension=YES
-- = **Net Personal Take-Home** (highlighted)
-
-### Right panel — Summary & scenario comparison
-
-**Tax Summary block** (show each component, subtotal = Total Tax):
-- Corporation Tax (negative if refund)
-- Income Tax
-- Employee NI
-- Employer NI + Pension costs
-- Dividend Tax
-- **TOTAL TAX** (prominent)
-- Effective Tax Rate %
-- Take-Home as % of Revenue
-
-**Scenario comparison table** — automatically recalculate the same revenue/costs/dividends for 5 salary levels:
-
-| Scenario | £0 | £5,000 | £9,100 | £12,570 | Custom (your input) |
-|---|---|---|---|---|---|
-| Director Salary | | | | | |
-| Taxable Profit | | | | | |
-| Corp Tax | | | | | |
-| Post-Tax Profit | | | | | |
-| Personal Allowance | | | | | |
-| Income Tax | | | | | |
-| Employee NI | | | | | |
-| Dividend Tax | | | | | |
-| Net Take-Home | | | | | |
-| **Total Tax** | | | | | |
-| **Eff. Rate** | | | | | |
-
-Highlight the column with the lowest Total Tax in green. All scenario columns use the same EA toggle, pension toggle, revenue, costs and dividends as the main inputs — only the salary varies.
-
----
-
-## UI design requirements
-
-- **Clean, professional** — suitable for showing clients. Navy/blue header, white card panels, subtle grey section dividers
-- **Currency formatting** throughout — all £ values formatted as `£X,XXX` with commas, negative values shown in red with parentheses e.g. `(£1,234)`
-- **Percentage formatting** — one decimal place e.g. `37.7%`
-- **Instant recalculation** — all results update as the user types, no loading states needed
-- **Mobile responsive** — inputs stack above results on small screens
-- **Colour coding**:
-  - Positive tax values (costs) — standard black
-  - Negative CT (refund) — green text
-  - Warning messages — amber banner
-  - Total/subtotal rows — slightly shaded background
-  - Lowest-tax scenario column — green highlight
-- **Tooltips or info icons** on complex items: personal allowance taper, marginal relief, salary sacrifice, dividend allowance, CT loss carry-back
-
----
-
-## Collapsible "Rates & Assumptions" section
-
-At the bottom, show all the hardcoded rates in a read-only table with labels, values and a brief note. Include:
-- Source: `gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027`
-- A note that dividend rates increased by 2ppts from 6 April 2026 (Budget 2025)
-- A note that the employer pension match and director sacrifice rates are assumptions — a real-world figure would depend on the pension scheme
-
----
-
-## Key notes for implementation
-
-1. **Salary sacrifice reduces the NI base** — the employer NI on the director is calculated on `(directorSalary − pensionSacrifice)`, not gross salary. Make sure this flows through correctly.
-
-2. **The £500 dividend allowance reduces tax but NOT the personal allowance taper** — dividends count in full towards the `totalPersonalIncome` figure used for the taper calculation, even though the first £500 is tax-free.
-
-3. **CT loss carry-back** — when `taxableCompanyProfit < 0`, apply the small profits rate (19%) to the loss to produce a refund. The result is a positive number (refund to company). In the summary, this appears as a **negative** total tax contribution (it reduces the total tax bill). Always show a warning that this assumes historic profits are available.
-
-4. **Employment Allowance** — only available if `eaToggle = YES`. A sole director with no other employees is **not** eligible. The toggle in the app represents the scenario where one additional employee is on payroll at £5,001.
-
-5. **Scenario comparison** — each scenario column must run the full `calculate()` function with the scenario salary substituted in, but all other inputs (revenue, costs, dividends, toggles) remain as the user has set them.
-
-6. **No form submission** — everything recalculates on every input change using React state/`useMemo`.
-
----
-
-## File structure suggestion
+The current `totalTax` formula has a sign error. Corporation tax is positive when payable and negative when a refund. The formula should use `+ corporationTax`, not `- corporationTax`:
 
 ```
-src/
-  App.jsx              — main layout
-  components/
-    InputPanel.jsx     — all user inputs
-    CompanySection.jsx — company tax breakdown
-    PersonalSection.jsx — personal tax breakdown
-    SummaryPanel.jsx   — total tax summary + scenario table
-    RatesSection.jsx   — collapsible rates display
-    Warnings.jsx       — validation warning banners
-  utils/
-    calculate.js       — pure calculate(inputs) function
-    format.js          — currency and percentage formatters
-  constants/
-    rates.js           — RATES object
+// WRONG (current)
+totalTax = −corporationTax + incomeTax + ...
+
+// CORRECT
+totalTax = corporationTax + totalIncomeTax + totalEmployeeNI
+         + totalEmployerNIDirectorNet + employerNI5k + employerPension5k
+         + totalDividendTax
 ```
+
+Similarly in the Tax Summary display, Corporation Tax should show `r.corporationTax` directly (not negated). It will naturally be positive for a payable amount and negative for a refund.
 
 ---
 
-## Scotland note
+## Expected results for verification
 
-Add a small disclaimer below the inputs: *"This calculator applies England, Wales and Northern Ireland income tax rates. Scottish taxpayers have different non-savings income bands."*
+### Single director defaults (salary £12,570, dividends £87,430, no EA, no pension)
+- Employer NI Director (gross): £1,135.50
+- Taxable Company Profit: £96,494.50
+- Corporation Tax: £19,679.89
+- Dividend Tax: £21,652.47
+- Net Take-Home: £78,347.52
+- **Total Tax: £42,467.87**
+- **Effective Rate: 37.5%**
+
+### Two equal directors (each: salary £12,570, dividends £43,715, EA auto-enabled, no pension)
+- EA automatically applied: £2,271.00
+- Taxable Company Profit: £82,789.00
+- Corporation Tax: £16,544.28
+- Each director's Net Take-Home: £50,260.64
+- **Total Tax: £29,104.79**
+- **Effective Rate: 25.7%**

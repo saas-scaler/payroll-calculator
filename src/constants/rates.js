@@ -6,14 +6,14 @@ export const RATES = {
 
   // Pension
   employerPensionMatch: 0.03,      // 3% of £5,001 employee salary
-  directorPensionSacrificeDefault: 0.05, // default 5% — now user-configurable
+  directorPensionSacrifice: 0.05,  // 5% of director salary (salary sacrifice)
 
   // Corporation Tax
   ctSmallProfitsLimit: 50000,
   ctSmallProfitsRate: 0.19,
   ctMainRateLimit: 250000,
   ctMainRate: 0.25,
-  ctMarginalReliefFraction: 3 / 200,  // HMRC standard fraction for marginal relief
+  ctMarginalReliefDenominator: 200000,
 
   // Income Tax
   personalAllowance: 12570,
@@ -43,7 +43,7 @@ export const RATES_DISPLAY = [
   { category: 'Employer NI', label: 'Employer NI Rate', value: '15%', note: 'On earnings above secondary threshold' },
   { category: 'Employer NI', label: 'Employment Allowance', value: '£10,500', note: 'Available if ≥1 employee on payroll' },
   { category: 'Pension', label: 'Employer Pension Match', value: '3%', note: 'Assumption — depends on pension scheme' },
-  { category: 'Pension', label: 'Director Pension Rate', value: '5% (default)', note: 'User-configurable — depends on pension scheme' },
+  { category: 'Pension', label: 'Director Pension Sacrifice', value: '5%', note: 'Assumption — depends on pension scheme' },
   { category: 'Corporation Tax', label: 'Small Profits Rate', value: '19%', note: 'Profits ≤ £50,000' },
   { category: 'Corporation Tax', label: 'Main Rate', value: '25%', note: 'Profits ≥ £250,000' },
   { category: 'Corporation Tax', label: 'Marginal Relief', value: '£50,001–£249,999', note: 'Effective rate between 19%–25%' },

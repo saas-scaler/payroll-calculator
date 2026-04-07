@@ -23,10 +23,8 @@ function Row({ label, value, indent, highlight, negative, tooltip }) {
 }
 
 export default function CompanySection({ inputs, results }) {
-  const { revenue, otherCosts, directorSalary } = inputs;
+  const { revenue, otherCosts, directors } = inputs;
   const r = results;
-
-  const directorSalaryAfterSacrifice = directorSalary - r.directorPensionSacrificeAmount;
 
   return (
     <div className="mb-6">
@@ -37,48 +35,51 @@ export default function CompanySection({ inputs, results }) {
         <Row label="Revenue" value={revenue} />
         <Row label="Less: Other Business Costs" value={-otherCosts} />
         {r.employee5kSalary > 0 && (
-          <Row label="Less: Employee Salary" value={-r.employee5kSalary} />
+          <Row label="Less: £5,001 Employee Salary" value={-r.employee5kSalary} />
         )}
-        {r.directorPensionSacrificeAmount > 0 && (
+        {r.totalDirectorPensionSacrifice > 0 && (
           <Row
-            label="Less: Director Pension Sacrifice"
-            value={-r.directorPensionSacrificeAmount}
-            tooltip="Salary sacrifice reduces both taxable salary and employer NI base. This portion of the director's gross salary is redirected to pension."
+            label={`Less: Director Pension Sacrifice${directors.length > 1 ? ' (all directors)' : ''}`}
+            value={-r.totalDirectorPensionSacrifice}
+            tooltip="Salary sacrifice reduces both taxable salary and employer NI base. The sacrificed amount goes directly into each director's pension."
           />
         )}
-        {r.directorPensionFixed > 0 && (
-          <Row
-            label="Less: Director Pension (fixed)"
-            value={-r.directorPensionFixed}
-            tooltip="Fixed employer pension contribution paid directly by the company into the director's pension. This is an additional company cost on top of salary."
-          />
+        {directors.length === 1 ? (
+          <Row label="Less: Director Salary" value={-r.totalDirectorSalaries} />
+        ) : (
+          <>
+            <Row label="Less: Director Salaries (total)" value={-r.totalDirectorSalaries} />
+            {directors.map((d, i) => (
+              <Row
+                key={i}
+                label={`  ${d.name || `Director ${i + 1}`}: £${d.salary.toLocaleString()}`}
+                value={-d.salary}
+                indent
+              />
+            ))}
+          </>
         )}
-        <Row
-          label={r.directorPensionSacrificeAmount > 0 ? "Less: Director Salary (after sacrifice)" : "Less: Director Salary"}
-          value={-directorSalaryAfterSacrifice}
-        />
         {r.employerPension5k > 0 && (
           <Row label="Less: Employer Pension on Employee" value={-r.employerPension5k} />
         )}
-        {r.employerNI5kGross > 0 && (
-          <Row label="Employer NI on Employee (gross)" value={-r.employerNI5kGross} />
+        {r.employerNI5k > 0 && (
+          <Row label="Less: Employer NI on Employee" value={-r.employerNI5k} />
         )}
-        {r.employmentAllowanceUsed > 0 ? (
-          <>
-            <Row label="Employer NI on Director (gross)" value={-r.employerNIDirectorGross} />
-            <Row
-              label="Add: Employment Allowance"
-              value={r.employmentAllowanceUsed}
-              tooltip="Employment Allowance of up to £10,500 offsets total employer NI (director + employee). Available when at least one employee is on payroll."
-            />
-            {r.employerNI5kNet > 0 && (
-              <Row label="Less: Employer NI on Employee (net)" value={-r.employerNI5kNet} />
-            )}
-            <Row label="Less: Employer NI on Director (net)" value={-r.employerNIDirectorNet} />
-          </>
-        ) : (
-          <Row label="Less: Employer NI on Director" value={-r.employerNIDirectorNet} />
+        <Row
+          label={`Employer NI on Director${directors.length > 1 ? 's' : ''} (gross)`}
+          value={-r.totalEmployerNIDirectorGross}
+        />
+        {r.employmentAllowanceUsed > 0 && (
+          <Row
+            label="Add: Employment Allowance"
+            value={r.employmentAllowanceUsed}
+            tooltip="Employment Allowance of up to £10,500 offsets employer NI. Available when at least one employee is on payroll."
+          />
         )}
+        <Row
+          label={`Less: Employer NI on Director${directors.length > 1 ? 's' : ''} (net)`}
+          value={-r.totalEmployerNIDirectorNet}
+        />
         <Row label="Taxable Company Profit" value={r.taxableCompanyProfit} highlight />
         <Row
           label="Less: Corporation Tax"
