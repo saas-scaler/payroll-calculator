@@ -14,6 +14,7 @@ function CurrencyInput({ label, value, onChange, id }) {
 
   const handleFocus = () => {
     setFocused(true);
+    // Show raw number for easier editing
     setDisplayVal(value === 0 ? '' : String(value));
   };
 
@@ -40,24 +41,6 @@ function CurrencyInput({ label, value, onChange, id }) {
           onBlur={handleBlur}
         />
       </div>
-    </div>
-  );
-}
-
-function TextInput({ label, value, onChange, id, placeholder }) {
-  return (
-    <div className="mb-3">
-      <label htmlFor={id} className="block text-sm font-medium text-slate-700 mb-1">
-        {label}
-      </label>
-      <input
-        id={id}
-        type="text"
-        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-      />
     </div>
   );
 }
@@ -93,85 +76,10 @@ function Toggle({ label, checked, onChange, id, description }) {
   );
 }
 
-function DirectorCard({ director, index, onChange, onRemove, canRemove }) {
-  const update = (field) => (value) => {
-    onChange(index, { ...director, [field]: value });
-  };
-
-  return (
-    <div className="bg-slate-50 rounded-md border border-slate-200 p-3 mb-3">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-semibold text-slate-600">
-          Director {index + 1}
-        </span>
-        {canRemove && (
-          <button
-            type="button"
-            onClick={() => onRemove(index)}
-            className="text-xs text-red-500 hover:text-red-700 font-medium"
-          >
-            Remove
-          </button>
-        )}
-      </div>
-      <TextInput
-        id={`director-${index}-name`}
-        label="Name (optional)"
-        value={director.name}
-        onChange={update('name')}
-        placeholder={`Director ${index + 1}`}
-      />
-      <CurrencyInput
-        id={`director-${index}-salary`}
-        label="Salary (£)"
-        value={director.salary}
-        onChange={update('salary')}
-      />
-      <CurrencyInput
-        id={`director-${index}-dividends`}
-        label="Dividends Drawn (£)"
-        value={director.dividends}
-        onChange={update('dividends')}
-      />
-    </div>
-  );
-}
-
 export default function InputPanel({ inputs, setInputs }) {
   const update = useCallback(
     (field) => (value) => {
       setInputs((prev) => ({ ...prev, [field]: value }));
-    },
-    [setInputs]
-  );
-
-  const updateDirector = useCallback(
-    (index, director) => {
-      setInputs((prev) => {
-        const newDirectors = [...prev.directors];
-        newDirectors[index] = director;
-        return { ...prev, directors: newDirectors };
-      });
-    },
-    [setInputs]
-  );
-
-  const addDirector = useCallback(() => {
-    setInputs((prev) => ({
-      ...prev,
-      directors: [
-        ...prev.directors,
-        { name: '', salary: 12570, dividends: 0 },
-      ],
-    }));
-  }, [setInputs]);
-
-  const removeDirector = useCallback(
-    (index) => {
-      setInputs((prev) => ({
-        ...prev,
-        directors: prev.directors.filter((_, i) => i !== index),
-      }));
     },
     [setInputs]
   );
@@ -192,63 +100,84 @@ export default function InputPanel({ inputs, setInputs }) {
         value={inputs.otherCosts}
         onChange={update('otherCosts')}
       />
+      <CurrencyInput
+        id="directorSalary"
+        label="Director Salary (£)"
+        value={inputs.directorSalary}
+        onChange={update('directorSalary')}
+      />
+      <CurrencyInput
+        id="dividends"
+        label="Dividends Drawn (£)"
+        value={inputs.dividends}
+        onChange={update('dividends')}
+      />
 
       <hr className="my-4 border-slate-200" />
 
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-slate-700">Directors</h3>
-        {inputs.directors.length < 4 && (
-          <button
-            type="button"
-            onClick={addDirector}
-            className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add Director
-          </button>
-        )}
-      </div>
-
-      {inputs.directors.map((director, i) => (
-        <DirectorCard
-          key={i}
-          director={director}
-          index={i}
-          onChange={updateDirector}
-          onRemove={removeDirector}
-          canRemove={inputs.directors.length > 1}
-        />
-      ))}
-
-      <hr className="my-4 border-slate-200" />
-
-      {inputs.directors.filter(d => d.salary > 5000).length >= 2 && (
-        <div className="mb-3 px-3 py-2 bg-green-50 border border-green-200 rounded-md">
-          <p className="text-xs font-medium text-green-800">
-            Employment Allowance automatically available — you have {inputs.directors.length} directors on payroll.
-          </p>
-        </div>
-      )}
       <Toggle
         id="eaToggle"
-        label={inputs.directors.filter(d => d.salary > 5000).length >= 2 ? 'Also include £5,001 Employee?' : 'Include £5,001 Employee?'}
+        label="Include Employee?"
         checked={inputs.eaToggle}
         onChange={update('eaToggle')}
-        description={
-          inputs.directors.filter(d => d.salary > 5000).length >= 2
-            ? 'EA is already unlocked. This adds a £5,001 employee salary, pension and NI costs.'
-            : 'Adds a £5,001 employee to unlock Employment Allowance'
-        }
+        description="Adds an employee to unlock Employment Allowance"
       />
-      <Toggle
-        id="pensionToggle"
-        label="Director Pension Sacrifice?"
-        checked={inputs.pensionToggle}
-        onChange={update('pensionToggle')}
-        description="5% salary sacrifice into each director's pension"
+      {inputs.eaToggle && (
+        <CurrencyInput
+          id="employeeSalary"
+          label="Employee Salary (£)"
+          value={inputs.employeeSalary}
+          onChange={update('employeeSalary')}
+        />
+      )}
+
+      <hr className="my-4 border-slate-200" />
+
+      <CurrencyInput
+        id="directorPensionFixed"
+        label="Director Pension — Fixed Amount (£)"
+        value={inputs.directorPensionFixed}
+        onChange={update('directorPensionFixed')}
       />
+      <div className="mb-3">
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Director Pension Method
+        </label>
+        <select
+          id="pensionMethod"
+          value={inputs.pensionMethod}
+          onChange={(e) => update('pensionMethod')(e.target.value)}
+          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+        >
+          <option value="none">None</option>
+          <option value="salary_sacrifice">Salary Sacrifice</option>
+          <option value="relief_at_source">Relief at Source</option>
+        </select>
+        <p className="text-xs text-slate-500 mt-0.5">
+          {inputs.pensionMethod === 'salary_sacrifice'
+            ? 'Salary is reduced before tax & NI — saves employer and employee NI'
+            : inputs.pensionMethod === 'relief_at_source'
+            ? 'Director pays from net pay (80%), pension provider reclaims 20% basic rate relief'
+            : 'No additional percentage-based pension contribution'}
+        </p>
+      </div>
+      {inputs.pensionMethod !== 'none' && (
+        <div className="mb-3">
+          <label htmlFor="directorPensionRate" className="block text-sm font-medium text-slate-700 mb-1">
+            Director Pension Rate (%)
+          </label>
+          <input
+            id="directorPensionRate"
+            type="number"
+            min="0"
+            max="100"
+            step="1"
+            value={inputs.directorPensionRate}
+            onChange={(e) => update('directorPensionRate')(parseFloat(e.target.value) || 0)}
+            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          />
+        </div>
+      )}
 
       <p className="text-xs text-slate-400 mt-4 italic">
         This calculator applies England, Wales and Northern Ireland income tax rates. Scottish taxpayers have different non-savings income bands.
