@@ -7,17 +7,24 @@ import RatesSection from './components/RatesSection';
 import Warnings from './components/Warnings';
 import { calculate } from './utils/calculate';
 
+const DEFAULT_DIRECTOR = {
+  name: 'Director 1',
+  salary: 0,
+  dividends: 0,
+};
+
 const DEFAULT_INPUTS = {
   revenue: 0,
   otherCosts: 0,
-  directorSalary: 0,
-  dividends: 0,
+  directors: [{ ...DEFAULT_DIRECTOR }],
   eaToggle: false,
   employeeSalary: 0,
   pensionMethod: 'none',
   directorPensionRate: 0,
   directorPensionFixed: 0,
 };
+
+export { DEFAULT_DIRECTOR };
 
 function App() {
   const [inputs, setInputs] = useState(DEFAULT_INPUTS);

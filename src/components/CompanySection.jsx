@@ -23,10 +23,9 @@ function Row({ label, value, indent, highlight, negative, tooltip }) {
 }
 
 export default function CompanySection({ inputs, results }) {
-  const { revenue, otherCosts, directorSalary } = inputs;
+  const { revenue, otherCosts, directors } = inputs;
   const r = results;
-
-  const directorSalaryAfterSacrifice = directorSalary - r.directorPensionSacrificeAmount;
+  const isMultiDirector = directors.length > 1;
 
   return (
     <div className="mb-6">
@@ -39,24 +38,58 @@ export default function CompanySection({ inputs, results }) {
         {r.employee5kSalary > 0 && (
           <Row label="Less: Employee Salary" value={-r.employee5kSalary} />
         )}
-        {r.directorPensionSacrificeAmount > 0 && (
-          <Row
-            label="Less: Director Pension Sacrifice"
-            value={-r.directorPensionSacrificeAmount}
-            tooltip="Salary sacrifice reduces both taxable salary and employer NI base. This portion of the director's gross salary is redirected to pension."
-          />
+
+        {/* Director costs */}
+        {isMultiDirector ? (
+          <>
+            {r.directorResults.map((d, i) => (
+              <div key={i}>
+                {d.directorPensionSacrificeAmount > 0 && (
+                  <Row
+                    label={`Less: ${d.name} Pension Sacrifice`}
+                    value={-d.directorPensionSacrificeAmount}
+                    indent
+                    tooltip="Salary sacrifice reduces both taxable salary and employer NI base."
+                  />
+                )}
+                <Row
+                  label={`Less: ${d.name} Salary${d.directorPensionSacrificeAmount > 0 ? ' (after sacrifice)' : ''}`}
+                  value={-(d.directorSalary - d.directorPensionSacrificeAmount)}
+                  indent
+                />
+              </div>
+            ))}
+            {r.totalPensionFixed > 0 && (
+              <Row
+                label="Less: Director Pension (fixed, all)"
+                value={-r.totalPensionFixed}
+                tooltip="Fixed employer pension contribution paid directly by the company into each director's pension."
+              />
+            )}
+          </>
+        ) : (
+          <>
+            {r.directorResults[0].directorPensionSacrificeAmount > 0 && (
+              <Row
+                label="Less: Director Pension Sacrifice"
+                value={-r.directorResults[0].directorPensionSacrificeAmount}
+                tooltip="Salary sacrifice reduces both taxable salary and employer NI base. This portion of the director's gross salary is redirected to pension."
+              />
+            )}
+            {r.directorResults[0].directorPensionFixed > 0 && (
+              <Row
+                label="Less: Director Pension (fixed)"
+                value={-r.directorResults[0].directorPensionFixed}
+                tooltip="Fixed employer pension contribution paid directly by the company into the director's pension. This is an additional company cost on top of salary."
+              />
+            )}
+            <Row
+              label={r.directorResults[0].directorPensionSacrificeAmount > 0 ? "Less: Director Salary (after sacrifice)" : "Less: Director Salary"}
+              value={-(r.directorResults[0].directorSalary - r.directorResults[0].directorPensionSacrificeAmount)}
+            />
+          </>
         )}
-        {r.directorPensionFixed > 0 && (
-          <Row
-            label="Less: Director Pension (fixed)"
-            value={-r.directorPensionFixed}
-            tooltip="Fixed employer pension contribution paid directly by the company into the director's pension. This is an additional company cost on top of salary."
-          />
-        )}
-        <Row
-          label={r.directorPensionSacrificeAmount > 0 ? "Less: Director Salary (after sacrifice)" : "Less: Director Salary"}
-          value={-directorSalaryAfterSacrifice}
-        />
+
         {r.employerPension5k > 0 && (
           <Row label="Less: Employer Pension on Employee" value={-r.employerPension5k} />
         )}
@@ -65,19 +98,34 @@ export default function CompanySection({ inputs, results }) {
         )}
         {r.employmentAllowanceUsed > 0 ? (
           <>
-            <Row label="Employer NI on Director (gross)" value={-r.employerNIDirectorGross} />
+            <Row
+              label={isMultiDirector ? "Employer NI on Directors (gross)" : "Employer NI on Director (gross)"}
+              value={-r.totalEmployerNIDirectorGross}
+            />
             <Row
               label="Add: Employment Allowance"
               value={r.employmentAllowanceUsed}
-              tooltip="Employment Allowance of up to £10,500 offsets total employer NI (director + employee). Available when at least one employee is on payroll."
+              tooltip={
+                r.eaEligibleViaDirectors
+                  ? 'Employment Allowance of up to £10,500 unlocked because 2+ directors have salary above £5,000.'
+                  : 'Employment Allowance of up to £10,500 offsets total employer NI (director + employee). Available when at least one employee is on payroll.'
+              }
             />
             {r.employerNI5kNet > 0 && (
               <Row label="Less: Employer NI on Employee (net)" value={-r.employerNI5kNet} />
             )}
-            <Row label="Less: Employer NI on Director (net)" value={-r.employerNIDirectorNet} />
+            <Row
+              label={isMultiDirector ? "Less: Employer NI on Directors (net)" : "Less: Employer NI on Director (net)"}
+              value={-r.totalEmployerNIDirectorNet}
+            />
           </>
         ) : (
-          <Row label="Less: Employer NI on Director" value={-r.employerNIDirectorNet} />
+          r.totalEmployerNIDirectorNet > 0 && (
+            <Row
+              label={isMultiDirector ? "Less: Employer NI on Directors" : "Less: Employer NI on Director"}
+              value={-r.totalEmployerNIDirectorNet}
+            />
+          )
         )}
         <Row label="Taxable Company Profit" value={r.taxableCompanyProfit} highlight />
         <Row

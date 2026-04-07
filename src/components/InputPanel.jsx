@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { parseNumber, formatNumberInput } from '../utils/format';
+import { DEFAULT_DIRECTOR } from '../App';
 
 function CurrencyInput({ label, value, onChange, id }) {
   const [displayVal, setDisplayVal] = useState(formatNumberInput(value));
@@ -14,7 +15,6 @@ function CurrencyInput({ label, value, onChange, id }) {
 
   const handleFocus = () => {
     setFocused(true);
-    // Show raw number for easier editing
     setDisplayVal(value === 0 ? '' : String(value));
   };
 
@@ -76,10 +76,83 @@ function Toggle({ label, checked, onChange, id, description }) {
   );
 }
 
+function DirectorCard({ director, index, updateDirector, removeDirector, canRemove }) {
+  return (
+    <div className="border border-slate-200 rounded-md p-3 mb-3 bg-slate-50/50">
+      <div className="flex items-center justify-between mb-2">
+        <input
+          type="text"
+          value={director.name}
+          onChange={(e) => updateDirector(index, 'name', e.target.value)}
+          className="text-sm font-medium text-slate-700 bg-transparent border-b border-slate-300 focus:border-blue-500 outline-none px-1 py-0.5 w-40"
+          placeholder={`Director ${index + 1}`}
+        />
+        {canRemove && (
+          <button
+            onClick={() => removeDirector(index)}
+            className="text-xs text-red-500 hover:text-red-700 transition-colors"
+          >
+            Remove
+          </button>
+        )}
+      </div>
+      <CurrencyInput
+        id={`directorSalary-${index}`}
+        label="Salary (£)"
+        value={director.salary}
+        onChange={(val) => updateDirector(index, 'salary', val)}
+      />
+      <CurrencyInput
+        id={`dividends-${index}`}
+        label="Dividends (£)"
+        value={director.dividends}
+        onChange={(val) => updateDirector(index, 'dividends', val)}
+      />
+    </div>
+  );
+}
+
 export default function InputPanel({ inputs, setInputs }) {
   const update = useCallback(
     (field) => (value) => {
       setInputs((prev) => ({ ...prev, [field]: value }));
+    },
+    [setInputs]
+  );
+
+  const updateDirector = useCallback(
+    (index, field, value) => {
+      setInputs((prev) => {
+        const newDirectors = [...prev.directors];
+        newDirectors[index] = { ...newDirectors[index], [field]: value };
+        return { ...prev, directors: newDirectors };
+      });
+    },
+    [setInputs]
+  );
+
+  const addDirector = useCallback(() => {
+    setInputs((prev) => {
+      if (prev.directors.length >= 4) return prev;
+      return {
+        ...prev,
+        directors: [
+          ...prev.directors,
+          { ...DEFAULT_DIRECTOR, name: `Director ${prev.directors.length + 1}` },
+        ],
+      };
+    });
+  }, [setInputs]);
+
+  const removeDirector = useCallback(
+    (index) => {
+      setInputs((prev) => {
+        if (prev.directors.length <= 1) return prev;
+        return {
+          ...prev,
+          directors: prev.directors.filter((_, i) => i !== index),
+        };
+      });
     },
     [setInputs]
   );
@@ -100,18 +173,33 @@ export default function InputPanel({ inputs, setInputs }) {
         value={inputs.otherCosts}
         onChange={update('otherCosts')}
       />
-      <CurrencyInput
-        id="directorSalary"
-        label="Director Salary (£)"
-        value={inputs.directorSalary}
-        onChange={update('directorSalary')}
-      />
-      <CurrencyInput
-        id="dividends"
-        label="Dividends Drawn (£)"
-        value={inputs.dividends}
-        onChange={update('dividends')}
-      />
+
+      <hr className="my-4 border-slate-200" />
+
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-slate-700">
+          {inputs.directors.length === 1 ? 'Director' : `Directors (${inputs.directors.length})`}
+        </h3>
+        {inputs.directors.length < 4 && (
+          <button
+            onClick={addDirector}
+            className="text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
+          >
+            + Add Director
+          </button>
+        )}
+      </div>
+
+      {inputs.directors.map((director, index) => (
+        <DirectorCard
+          key={index}
+          director={director}
+          index={index}
+          updateDirector={updateDirector}
+          removeDirector={removeDirector}
+          canRemove={inputs.directors.length > 1}
+        />
+      ))}
 
       <hr className="my-4 border-slate-200" />
 

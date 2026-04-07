@@ -25,7 +25,7 @@ function SummaryRow({ label, value, prominent, negative }) {
 export default function SummaryPanel({ inputs, results }) {
   const r = results;
 
-  const employerCosts = r.employerNIDirectorNet + r.employerNI5kNet + r.employerPension5k;
+  const employerCosts = r.totalEmployerNIDirectorNet + r.employerNI5kNet + r.employerPension5k;
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-5">
@@ -35,10 +35,10 @@ export default function SummaryPanel({ inputs, results }) {
       </h3>
       <div className="divide-y divide-slate-100 mb-6">
         <SummaryRow label="Corporation Tax" value={r.corporationTax} />
-        <SummaryRow label="Income Tax" value={r.incomeTax} />
-        <SummaryRow label="Employee NI" value={r.employeeNI} />
+        <SummaryRow label="Income Tax" value={r.totalIncomeTax} />
+        <SummaryRow label="Employee NI" value={r.totalEmployeeNI} />
         <SummaryRow label="Employer NI + Pension Costs" value={employerCosts} />
-        <SummaryRow label="Dividend Tax" value={r.dividendTax} />
+        <SummaryRow label="Dividend Tax" value={r.totalDividendTax} />
         <SummaryRow label="TOTAL TAX" value={r.totalTax} prominent />
         <SummaryRow label="Effective Tax Rate" value={formatPercent(r.effectiveTaxRate)} />
         <SummaryRow label="Take-Home as % of Revenue" value={formatPercent(r.takeHomeAsPercentOfRevenue)} />
